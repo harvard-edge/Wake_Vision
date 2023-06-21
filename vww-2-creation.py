@@ -20,6 +20,7 @@ def label_person(
         ds_entry["person"] = 1
     else:
         ds_entry["person"] = 0
+    return ds_entry
 
 
 ds["train"] = ds["train"].map(label_person, num_parallel_calls=tf.data.AUTOTUNE)
