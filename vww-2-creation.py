@@ -10,8 +10,6 @@ ds = tfds.load(
     shuffle_files=True,
 )
 
-ds["train"].prefetch(tf.data.AUTOTUNE)  # Prefetch the data for improved performance
-
 
 def label_person(
     ds_entry,
