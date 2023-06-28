@@ -23,4 +23,27 @@ def label_person(
     return ds_entry
 
 
+def person_filter(ds_entry):
+    return tf.equal(ds_entry["person"], 1)
+
+
+def non_person_filter(ds_entry):
+    return tf.equal(ds_entry["person"], 0)
+
+
+def count_ds(ds_entry, _):
+    return ds_entry + 1
+
+
 ds["train"] = ds["train"].map(label_person, num_parallel_calls=tf.data.AUTOTUNE)
+
+person_ds = ds["train"].filter(person_filter)
+non_person_ds = ds["train"].filter(non_person_filter)
+
+count_person_ds = person_ds.reduce(tf.int64(0), count_ds)
+count_non_person_ds = non_person_ds.reduce(tf.int64(0), count_ds)
+
+if count_person_ds < count_non_person_ds:
+    non_person_ds = non_person_ds.take(count_person_ds)
+else:
+    person_ds = person_ds.take(count_non_person_ds)
