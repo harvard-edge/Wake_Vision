@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -40,8 +41,8 @@ ds["train"] = ds["train"].map(label_person, num_parallel_calls=tf.data.AUTOTUNE)
 person_ds = ds["train"].filter(person_filter)
 non_person_ds = ds["train"].filter(non_person_filter)
 
-count_person_ds = person_ds.reduce(tf.int64(0), count_ds)
-count_non_person_ds = non_person_ds.reduce(tf.int64(0), count_ds)
+count_person_ds = person_ds.reduce(np.int64(0), count_ds)
+count_non_person_ds = non_person_ds.reduce(np.int64(0), count_ds)
 
 if count_person_ds < count_non_person_ds:
     non_person_ds = non_person_ds.take(count_person_ds)
