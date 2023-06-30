@@ -83,4 +83,4 @@ mobilenetv1 = tf.keras.applications.MobileNet(alpha=0.25, weights=None, classes=
 mobilenetv1.compile(optimizer=optimizer, loss=loss, metrics=["accuracy"])
 
 # This call doesnt have the person labels as a target yet
-mobilenetv1.fit(mobilenetv1_train, ds["train"]["person"], epochs=10)
+# mobilenetv1.fit(mobilenetv1_train, epochs=10)
