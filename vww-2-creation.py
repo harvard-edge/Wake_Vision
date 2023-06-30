@@ -76,9 +76,9 @@ mobilenetv1_train = ds["train"].map(crop_images, num_parallel_calls=tf.data.AUTO
 
 mobilenetv1_train = mobilenetv1_train.batch(96).prefetch(tf.data.AUTOTUNE)
 
-mobilenetv1 = tf.keras.applications.MobileNet(
-    depth_multiplier=0.25, weights=None, classes=2
-)
+# The visual wake words paper mention that the depth multiplier of their mobilenet model is 0.25.
+# This is however not a possible value for the depth multiplier parameter of this api. There may be some termonology problems here where what the paper calls depth multiplier is the alpha parameter of the api.
+mobilenetv1 = tf.keras.applications.MobileNet(alpha=0.25, weights=None, classes=2)
 
 mobilenetv1.compile(optimizer=optimizer, loss=loss, metrics=["accuracy"])
 
