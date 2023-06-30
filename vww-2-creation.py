@@ -33,6 +33,10 @@ def non_person_filter(ds_entry):
     return tf.equal(ds_entry["person"], 0)
 
 
+def prepare_supervised(ds_entry):
+    return (ds_entry["image"], ds_entry["person"])
+
+
 def crop_images(ds_entry):
     return tf.image.resize_with_crop_or_pad(ds_entry["image"], 224, 224)
 
@@ -60,18 +64,15 @@ optimizer = tf.keras.optimizers.RMSprop(
 # Loss
 loss = tf.keras.losses.SparseCategoricalCrossentropy()
 
-# Decay & Momentum: 0.9
-# Batch size: 96
-# Learning rate: 0.045 initially decaying by .98 per epoch.
-
-# Conv batch norm decay: 0.99
-# Trained with quantization aware training 10^-5 learning rate and 0.9 decay
-
 # Try out training and inference with mobilenet v1
 # Parameters given to models are the same as for the models used in the visual wake words paper
 
 mobilenetv1_train = ds["train"].map(crop_images, num_parallel_calls=tf.data.AUTOTUNE)
-mobilenetv1_train = tf.keras.applications.mobilenet.preprocess_input(mobilenetv1_train)
+
+# This doesn't work at the moment - may be an issue with the dataset being in in8 format while this method expects float32
+# mobilenetv1_train = mobilenetv1_train.map(
+#    lambda ds_sample: tf.keras.applications.mobilenet.preprocess_input(ds_sample)
+# )
 
 mobilenetv1_train = mobilenetv1_train.batch(96).prefetch(tf.data.AUTOTUNE)
 
@@ -81,13 +82,5 @@ mobilenetv1 = tf.keras.applications.MobileNet(
 
 mobilenetv1.compile(optimizer=optimizer, loss=loss, metrics=["accuracy"])
 
-mobilenetv1.fit(ds["train"]["image"], ds["train"]["person"], epochs=10)
-
-# Also try out Mobilenet v2
-# mobilenetv2_train = ds["train"].map(crop_images, num_parallel_calls=tf.data.AUTOTUNE)
-# mobilenetv2_train = tf.keras.applications.mobilenet_v2.preprocess_input(
-#    mobilenetv2_train
-# )
-#
-## The depth multiplier should be set to 0.5 but this does not seem to be supported in this api.
-# mobilenetv2 = tf.keras.applications.MobileNetV2(weights=None, classes=2)
+# This call doesnt have the person labels as a target yet
+mobilenetv1.fit(mobilenetv1_train, ds["train"]["person"], epochs=10)
