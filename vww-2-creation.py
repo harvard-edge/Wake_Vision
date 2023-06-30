@@ -34,7 +34,7 @@ def non_person_filter(ds_entry):
 
 
 def crop_images(ds_entry):
-    return tf.image.resize_with_crop_or_pad(ds_entry, 224, 224)
+    return tf.image.resize_with_crop_or_pad(ds_entry["image"], 224, 224)
 
 
 ds["train"] = ds["train"].map(label_person, num_parallel_calls=tf.data.AUTOTUNE)
