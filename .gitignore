@@ -1,1 +1,3 @@
 dataset/
+.vscode/
+*.code-workspace
