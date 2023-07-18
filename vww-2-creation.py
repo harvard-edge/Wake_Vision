@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -33,12 +32,25 @@ def non_person_filter(ds_entry):
     return tf.equal(ds_entry["person"], 0)
 
 
+def crop_images(ds_entry):
+    ds_entry["image"] = tf.image.resize_with_crop_or_pad(ds_entry["image"], 224, 224)
+    return ds_entry
+
+
+def cast_images_to_float32(ds_entry):
+    ds_entry["image"] = tf.cast(ds_entry["image"], tf.float32)
+    return ds_entry
+
+
+def mobilenet_preprocessing_wrapper(ds_entry):
+    ds_entry["image"] = tf.keras.applications.mobilenet.preprocess_input(
+        ds_entry["image"]
+    )
+    return ds_entry
+
+
 def prepare_supervised(ds_entry):
     return (ds_entry["image"], ds_entry["person"])
-
-
-def crop_images(ds_entry):
-    return tf.image.resize_with_crop_or_pad(ds_entry["image"], 224, 224)
 
 
 ds["train"] = ds["train"].map(label_person, num_parallel_calls=tf.data.AUTOTUNE)
@@ -46,15 +58,21 @@ ds["train"] = ds["train"].map(label_person, num_parallel_calls=tf.data.AUTOTUNE)
 person_ds = ds["train"].filter(person_filter)
 non_person_ds = ds["train"].filter(non_person_filter)
 
-non_person_ds = non_person_ds.take(COUNT_PERSON_SAMPLES)
 person_ds = person_ds.take(COUNT_PERSON_SAMPLES)
+non_person_ds = non_person_ds.take(COUNT_PERSON_SAMPLES)
 
-ds["train"] = person_ds.concatenate(non_person_ds)
+# We now interleave these two datasets with an equal probability of picking an element from each dataset. This should result in a shuffled dataset.
+# As an added benefit this allows us to shuffle the dataset differently for every epoch using "rerandomize_each_iteration".
+ds["train"] = tf.data.Dataset.sample_from_datasets(
+    [person_ds, non_person_ds],
+    stop_on_empty_dataset=False,
+    rerandomize_each_iteration=True,
+)
 
-# Shuffle the entire dataset again. This may require too much memory.
-ds["train"] = ds["train"].shuffle(2 * COUNT_PERSON_SAMPLES)
 
 ## Start of inference testing part
+# Try out training and inference with mobilenet v1
+# Parameters given to models are the same as for the models used in the visual wake words paper
 
 # Optimizer
 optimizer = tf.keras.optimizers.RMSprop(
@@ -64,15 +82,23 @@ optimizer = tf.keras.optimizers.RMSprop(
 # Loss
 loss = tf.keras.losses.SparseCategoricalCrossentropy()
 
-# Try out training and inference with mobilenet v1
-# Parameters given to models are the same as for the models used in the visual wake words paper
-
+# Crop images to the resolution expected by mobilenet
 mobilenetv1_train = ds["train"].map(crop_images, num_parallel_calls=tf.data.AUTOTUNE)
 
-# This doesn't work at the moment - may be an issue with the dataset being in in8 format while this method expects float32
-# mobilenetv1_train = mobilenetv1_train.map(
-#    lambda ds_sample: tf.keras.applications.mobilenet.preprocess_input(ds_sample)
-# )
+# Convert values from int8 to float32
+mobilenetv1_train = mobilenetv1_train.map(
+    cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE
+)
+
+# Use the official mobilenet preprocessing to normalize images
+mobilenetv1_train = mobilenetv1_train.map(
+    mobilenet_preprocessing_wrapper, num_parallel_calls=tf.data.AUTOTUNE
+)
+
+# Convert each dataset entry from a dictionary to a tuple of (img, label) to be used by the keras API.
+mobilenetv1_train = mobilenetv1_train.map(
+    prepare_supervised, num_parallel_calls=tf.data.AUTOTUNE
+)
 
 mobilenetv1_train = mobilenetv1_train.batch(96).prefetch(tf.data.AUTOTUNE)
 
@@ -82,5 +108,4 @@ mobilenetv1 = tf.keras.applications.MobileNet(alpha=0.25, weights=None, classes=
 
 mobilenetv1.compile(optimizer=optimizer, loss=loss, metrics=["accuracy"])
 
-# This call doesnt have the person labels as a target yet
-# mobilenetv1.fit(mobilenetv1_train, epochs=10)
+mobilenetv1.fit(mobilenetv1_train, epochs=10)
