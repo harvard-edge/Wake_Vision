@@ -5,11 +5,31 @@ import tensorflow_datasets as tfds
 DATA_DIR = "./dataset/"
 COUNT_PERSON_SAMPLES = 844965  # Number of person samples in the dataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
 
-ds = tfds.load(
-    "open_images_v4/200k",
-    data_dir=DATA_DIR,
-    shuffle_files=True,
-)
+# Start of function definitions
+
+
+# A function to convert the "Train", "Validation" and "Test" parts of open images to their respective vww2 variants.
+def open_images_to_vww2(ds_split):
+    # Use the image level classes already in the open images dataset to label images as containing a person or no person
+    ds_split = ds_split.map(label_person, num_parallel_calls=tf.data.AUTOTUNE)
+
+    # Filter the dataset into a part with persons and a part with no persons
+    person_ds = ds_split.filter(person_filter)
+    non_person_ds = ds_split.filter(non_person_filter)
+
+    # Take an equal amount of images with persons and with no persons.
+    person_ds = person_ds.take(COUNT_PERSON_SAMPLES)
+    non_person_ds = non_person_ds.take(COUNT_PERSON_SAMPLES)
+
+    # We now interleave these two datasets with an equal probability of picking an element from each dataset. This should result in a shuffled dataset.
+    # As an added benefit this allows us to shuffle the dataset differently for every epoch using "rerandomize_each_iteration".
+    ds_split = tf.data.Dataset.sample_from_datasets(
+        [person_ds, non_person_ds],
+        stop_on_empty_dataset=False,
+        rerandomize_each_iteration=True,
+    )
+
+    return ds_split
 
 
 def label_person(
@@ -30,6 +50,25 @@ def person_filter(ds_entry):
 
 def non_person_filter(ds_entry):
     return tf.equal(ds_entry["person"], 0)
+
+
+def mobilenetv1_preprocessing(ds_split):
+    # Crop images to the resolution expected by mobilenet
+    ds_split = ds_split.map(crop_images, num_parallel_calls=tf.data.AUTOTUNE)
+
+    # Convert values from int8 to float32
+    ds_split = ds_split.map(cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE)
+
+    # Use the official mobilenet preprocessing to normalize images
+    ds_split = ds_split.map(
+        mobilenet_preprocessing_wrapper, num_parallel_calls=tf.data.AUTOTUNE
+    )
+
+    # Convert each dataset entry from a dictionary to a tuple of (img, label) to be used by the keras API.
+    ds_split = ds_split.map(prepare_supervised, num_parallel_calls=tf.data.AUTOTUNE)
+
+    # Batch and prefetch the dataset for improved performance
+    return ds_split.batch(96).prefetch(tf.data.AUTOTUNE)
 
 
 def crop_images(ds_entry):
@@ -53,21 +92,21 @@ def prepare_supervised(ds_entry):
     return (ds_entry["image"], ds_entry["person"])
 
 
-ds["train"] = ds["train"].map(label_person, num_parallel_calls=tf.data.AUTOTUNE)
+# End of function definitions
 
-person_ds = ds["train"].filter(person_filter)
-non_person_ds = ds["train"].filter(non_person_filter)
-
-person_ds = person_ds.take(COUNT_PERSON_SAMPLES)
-non_person_ds = non_person_ds.take(COUNT_PERSON_SAMPLES)
-
-# We now interleave these two datasets with an equal probability of picking an element from each dataset. This should result in a shuffled dataset.
-# As an added benefit this allows us to shuffle the dataset differently for every epoch using "rerandomize_each_iteration".
-ds["train"] = tf.data.Dataset.sample_from_datasets(
-    [person_ds, non_person_ds],
-    stop_on_empty_dataset=False,
-    rerandomize_each_iteration=True,
+ds = tfds.load(
+    "open_images_v4/200k",
+    data_dir=DATA_DIR,
+    shuffle_files=True,
 )
+
+ds["train"] = open_images_to_vww2(ds["train"])
+ds["validation"] = open_images_to_vww2(ds["validation"])
+ds["test"] = open_images_to_vww2(ds["test"])
+
+mobilenetv1_train = mobilenetv1_preprocessing(ds["train"])
+mobilenetv1_val = mobilenetv1_preprocessing(ds["validation"])
+mobilenetv1_test = mobilenetv1_preprocessing(ds["test"])
 
 
 ## Start of inference testing part
@@ -75,32 +114,13 @@ ds["train"] = tf.data.Dataset.sample_from_datasets(
 # Parameters given to models are the same as for the models used in the visual wake words paper
 
 # Optimizer
-optimizer = tf.keras.optimizers.RMSprop(
-    learning_rate=0.045, momentum=0.9, weight_decay=0.9
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate=0.045, decay_steps=10000, decay_rate=0.98
 )
+optimizer = tf.keras.optimizers.RMSprop(learning_rate=lr_schedule, momentum=0.9)
 
 # Loss
 loss = tf.keras.losses.SparseCategoricalCrossentropy()
-
-# Crop images to the resolution expected by mobilenet
-mobilenetv1_train = ds["train"].map(crop_images, num_parallel_calls=tf.data.AUTOTUNE)
-
-# Convert values from int8 to float32
-mobilenetv1_train = mobilenetv1_train.map(
-    cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE
-)
-
-# Use the official mobilenet preprocessing to normalize images
-mobilenetv1_train = mobilenetv1_train.map(
-    mobilenet_preprocessing_wrapper, num_parallel_calls=tf.data.AUTOTUNE
-)
-
-# Convert each dataset entry from a dictionary to a tuple of (img, label) to be used by the keras API.
-mobilenetv1_train = mobilenetv1_train.map(
-    prepare_supervised, num_parallel_calls=tf.data.AUTOTUNE
-)
-
-mobilenetv1_train = mobilenetv1_train.batch(96).prefetch(tf.data.AUTOTUNE)
 
 # The visual wake words paper mention that the depth multiplier of their mobilenet model is 0.25.
 # This is however not a possible value for the depth multiplier parameter of this api. There may be some termonology problems here where what the paper calls depth multiplier is the alpha parameter of the api.
@@ -108,4 +128,10 @@ mobilenetv1 = tf.keras.applications.MobileNet(alpha=0.25, weights=None, classes=
 
 mobilenetv1.compile(optimizer=optimizer, loss=loss, metrics=["accuracy"])
 
-mobilenetv1.fit(mobilenetv1_train, epochs=10)
+mobilenetv1.fit(
+    mobilenetv1_train, epochs=10, verbose=2, validation_data=mobilenetv1_val
+)
+
+mobilenetv1.evaluate(mobilenetv1_test, verbose=2)
+
+print(mobilenetv1.get_metrics_result())
