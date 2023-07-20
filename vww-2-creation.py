@@ -3,13 +3,15 @@ import tensorflow_datasets as tfds
 
 # Config
 DATA_DIR = "./dataset/"
-COUNT_PERSON_SAMPLES = 844965  # Number of person samples in the dataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
+COUNT_PERSON_SAMPLES_TRAIN = 844965  # Number of person samples in the train sdataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
+COUNT_PERSON_SAMPLES_VAL = 9973  # There are 31647 non-person samples.
+COUNT_PERSON_SAMPLES_TEST = 30226  # There are 95210 non-person samples. The distribution of persons in both the Val and Test set is close to 24% (Val:23.96) (Test:24.09) so we may not need to reduce the size of these.
 
 # Start of function definitions
 
 
 # A function to convert the "Train", "Validation" and "Test" parts of open images to their respective vww2 variants.
-def open_images_to_vww2(ds_split):
+def open_images_to_vww2(ds_split, count_person_samples):
     # Use the image level classes already in the open images dataset to label images as containing a person or no person
     ds_split = ds_split.map(label_person, num_parallel_calls=tf.data.AUTOTUNE)
 
@@ -18,8 +20,8 @@ def open_images_to_vww2(ds_split):
     non_person_ds = ds_split.filter(non_person_filter)
 
     # Take an equal amount of images with persons and with no persons.
-    person_ds = person_ds.take(COUNT_PERSON_SAMPLES)
-    non_person_ds = non_person_ds.take(COUNT_PERSON_SAMPLES)
+    person_ds = person_ds.take(count_person_samples)
+    non_person_ds = non_person_ds.take(count_person_samples)
 
     # We now interleave these two datasets with an equal probability of picking an element from each dataset. This should result in a shuffled dataset.
     # As an added benefit this allows us to shuffle the dataset differently for every epoch using "rerandomize_each_iteration".
@@ -100,9 +102,9 @@ ds = tfds.load(
     shuffle_files=True,
 )
 
-ds["train"] = open_images_to_vww2(ds["train"])
-ds["validation"] = open_images_to_vww2(ds["validation"])
-ds["test"] = open_images_to_vww2(ds["test"])
+ds["train"] = open_images_to_vww2(ds["train"], COUNT_PERSON_SAMPLES_TRAIN)
+ds["validation"] = open_images_to_vww2(ds["validation"], COUNT_PERSON_SAMPLES_VAL)
+ds["test"] = open_images_to_vww2(ds["test"], COUNT_PERSON_SAMPLES_TEST)
 
 mobilenetv1_train = mobilenetv1_preprocessing(ds["train"])
 mobilenetv1_val = mobilenetv1_preprocessing(ds["validation"])
