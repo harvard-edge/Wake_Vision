@@ -56,7 +56,7 @@ def non_person_filter(ds_entry):
 
 def mobilenetv1_preprocessing(ds_split):
     # Crop images to the resolution expected by mobilenet
-    ds_split = ds_split.map(crop_images, num_parallel_calls=tf.data.AUTOTUNE)
+    ds_split = ds_split.map(resize_images, num_parallel_calls=tf.data.AUTOTUNE)
 
     # Convert values from int8 to float32
     ds_split = ds_split.map(cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE)
@@ -73,8 +73,10 @@ def mobilenetv1_preprocessing(ds_split):
     return ds_split.batch(96).prefetch(tf.data.AUTOTUNE)
 
 
-def crop_images(ds_entry):
-    ds_entry["image"] = tf.image.resize_with_crop_or_pad(ds_entry["image"], 224, 224)
+def resize_images(ds_entry):
+    ds_entry["image"] = tf.keras.preprocessing.image.smart_resize(
+        ds_entry["image"], (224, 224), interpolation="bilinear"
+    )
     return ds_entry
 
 
@@ -116,17 +118,14 @@ mobilenetv1_test = mobilenetv1_preprocessing(ds["test"])
 # Parameters given to models are the same as for the models used in the visual wake words paper
 
 # Optimizer
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=0.045, decay_steps=10000, decay_rate=0.98
-)
-optimizer = tf.keras.optimizers.RMSprop(learning_rate=lr_schedule, momentum=0.9)
+optimizer = tf.keras.optimizers.RMSprop()
 
 # Loss
 loss = tf.keras.losses.SparseCategoricalCrossentropy()
 
 # The visual wake words paper mention that the depth multiplier of their mobilenet model is 0.25.
 # This is however not a possible value for the depth multiplier parameter of this api. There may be some termonology problems here where what the paper calls depth multiplier is the alpha parameter of the api.
-mobilenetv1 = tf.keras.applications.MobileNet(alpha=0.25, weights=None, classes=2)
+mobilenetv1 = tf.keras.applications.MobileNet(weights=None, classes=2)
 
 mobilenetv1.compile(optimizer=optimizer, loss=loss, metrics=["accuracy"])
 
