@@ -1,3 +1,5 @@
 dataset/
 .vscode/
 *.code-workspace
+__pycache__/
+models/
