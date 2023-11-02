@@ -1,8 +1,7 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-
-import experiment_config as cfg
+from experiment_config import cfg
 import pp_ops
 
 

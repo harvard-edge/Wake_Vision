@@ -1,32 +1,5 @@
 """
-Title: Getting started with Keras Core
-Author: [fchollet](https://twitter.com/fchollet)
-Date created: 2023/07/10
-Last modified: 2023/07/10
-Description: First contact with the new multi-backend Keras.
-Accelerator: GPU
-"""
-"""
-## Introduction
-
-Keras Core is a full implementation of the Keras API that
-works with TensorFlow, JAX, and PyTorch interchangeably.
-This notebook will walk you through key Keras Core workflows.
-
-First, let's install Keras Core:
-"""
-
-"""shell
-pip install -q keras-core
-"""
-
-"""
-## Setup
-
-We're going to be using the JAX backend here -- but you can
-edit the string below to `"tensorflow"` or `"torch"` and hit
-"Restart runtime", and the whole notebook will run just the same!
-This entire guide is backend-agnostic.
+Training Script for Wake Vision and Visual Wake Words Datasets
 """
 import numpy as np
 import os
@@ -41,9 +14,16 @@ import keras_core as keras
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-import experiment_config as cfg
+from experiment_config import cfg
 from wake_vision_loader import get_wake_vision
 from vww_loader import get_vww
+
+from pathlib import Path
+import yaml
+
+
+with tf.io.gfile.GFile(f'{cfg.CHECKPOINT_DIR}config.yaml', 'w') as fp:
+    yaml.dump(cfg.to_yaml(), fp)
 
 
 #get data
@@ -54,7 +34,7 @@ else:
 
 model = keras.applications.MobileNet(
     input_shape=cfg.INPUT_SHAPE,
-    alpha=0.25,
+    alpha=cfg.MODEL_SIZE,
     weights=None,
     classes=cfg.NUM_CLASSES)
 
@@ -70,9 +50,8 @@ and the metrics to monitor. Note that with the JAX and TensorFlow backends,
 XLA compilation is turned on by default.
 """
 
-initial_learning_rate = 0.005
 lr_schedule = keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate, decay_steps=10000, decay_rate=0.96, staircase=True
+    cfg.INIT_LR, decay_steps=cfg.DECAY_STEPS, decay_rate=cfg.DECAY_RATE, staircase=True
 )
 
 model.compile(
@@ -84,7 +63,7 @@ model.compile(
 )
 
 model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
-    filepath=cfg.CHECKPOINT_FILE,
+    filepath=cfg.CHECKPOINT_DIR,
     save_weights_only=True,
     monitor='val_accuracy',
     mode='max',
@@ -92,9 +71,12 @@ model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
 
 
 model.fit(
-    train, epochs=100, verbose=1, validation_data=val,
+    train, epochs=cfg.EPOCHS, verbose=1, validation_data=val,
     callbacks=[model_checkpoint_callback]
 )
 score = model.evaluate(test, verbose=1)
 print(score)
+
 model.save(cfg.SAVE_FILE)
+with open(f'{cfg.SAVE_DIR}config.yaml', 'w') as fp:
+    json.dump(cfg.to_yaml(), fp)
