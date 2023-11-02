@@ -2,6 +2,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 import experiment_config as cfg
+import pp_ops
 
 
 # A function to convert the "Train", "Validation" and "Test" parts of open images to their respective vww2 variants.
@@ -48,46 +49,34 @@ def non_person_filter(ds_entry):
     return tf.equal(ds_entry["person"], 0)
 
 
-def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE):
-    # Crop images to the resolution expected by mobilenet
-    ds_split = ds_split.map(resize_images, num_parallel_calls=tf.data.AUTOTUNE)
-
+def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
     # Convert values from int8 to float32
-    ds_split = ds_split.map(cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE)
+    ds_split = ds_split.map(pp_ops.cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE)
+
+    if train:
+        # inception crop
+        ds_split = ds_split.map(pp_ops.inception_crop, num_parallel_calls=tf.data.AUTOTUNE)
+        # resize
+        ds_split = ds_split.map(pp_ops.resize, num_parallel_calls=tf.data.AUTOTUNE)
+        # flip
+        ds_split = ds_split.map(pp_ops.random_flip_lr, num_parallel_calls=tf.data.AUTOTUNE)
+    else:
+        # resize small
+        ds_split = ds_split.map(pp_ops.resize_small, num_parallel_calls=tf.data.AUTOTUNE)
+        # center crop
+        ds_split = ds_split.map(pp_ops.center_crop, num_parallel_calls=tf.data.AUTOTUNE)
 
     # Use the official mobilenet preprocessing to normalize images
     ds_split = ds_split.map(
-        mobilenet_preprocessing_wrapper, num_parallel_calls=tf.data.AUTOTUNE
+        pp_ops.mobilenet_preprocessing_wrapper, num_parallel_calls=tf.data.AUTOTUNE
     )
 
     # Convert each dataset entry from a dictionary to a tuple of (img, label) to be used by the keras API.
-    ds_split = ds_split.map(prepare_supervised, num_parallel_calls=tf.data.AUTOTUNE)
+    ds_split = ds_split.map(pp_ops.prepare_supervised, num_parallel_calls=tf.data.AUTOTUNE)
 
     # Batch and prefetch the dataset for improved performance
     return ds_split.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
-
-def resize_images(ds_entry):
-    ds_entry["image"] = tf.keras.preprocessing.image.smart_resize(
-        ds_entry["image"], cfg.INPUT_SHAPE[:2], interpolation="bilinear"
-    )
-    return ds_entry
-
-
-def cast_images_to_float32(ds_entry):
-    ds_entry["image"] = tf.cast(ds_entry["image"], tf.float32)
-    return ds_entry
-
-
-def mobilenet_preprocessing_wrapper(ds_entry):
-    ds_entry["image"] = tf.keras.applications.mobilenet.preprocess_input(
-        ds_entry["image"]
-    )
-    return ds_entry
-
-
-def prepare_supervised(ds_entry):
-    return (ds_entry["image"], ds_entry["person"])
 
 
 def get_wake_vision(batch_size=cfg.BATCH_SIZE):
@@ -102,7 +91,7 @@ def get_wake_vision(batch_size=cfg.BATCH_SIZE):
     ds["validation"] = open_images_to_vww2(ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL)
     ds["test"] = open_images_to_vww2(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST)
 
-    train = preprocessing(ds["train"], batch_size)
+    train = preprocessing(ds["train"], batch_size, train=True)
     val = preprocessing(ds["validation"], batch_size)
     test = preprocessing(ds["test"], batch_size)
 

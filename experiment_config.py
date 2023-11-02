@@ -1,8 +1,16 @@
+import time
+
+EXPERIMENT_TIME = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
+
 TARGET_DS = "vww"
-SAVE_FILE = "vww_cnn.keras"
+
+MODEL_NAME = f"{TARGET_DS}_mobilenetv1"
 
 WV_DIR = "gs://wake-vision/tensorflow_datasets"
 VWW_DIR = "gs://wake-vision/vww"
+
+CHECKPOINT_FILE = f"gs://wake-vision/checkpoints/{EXPERIMENT_TIME}/{MODEL_NAME}/"
+SAVE_FILE = f"gs://wake-vision/saved_models/{EXPERIMENT_TIME}/{MODEL_NAME}.keras"
 
 COUNT_PERSON_SAMPLES_TRAIN = 844965  # Number of person samples in the train sdataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
 COUNT_PERSON_SAMPLES_VAL = 9973  # There are 31647 non-person samples.

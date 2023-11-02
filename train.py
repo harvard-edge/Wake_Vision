@@ -52,19 +52,11 @@ if cfg.TARGET_DS == "vww":
 else:
     train, val, test = get_wake_vision(cfg.BATCH_SIZE)
 
-model = keras.Sequential(
-    [
-        keras.layers.Input(shape=cfg.INPUT_SHAPE),
-        keras.layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-        keras.layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-        keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        keras.layers.Conv2D(128, kernel_size=(3, 3), activation="relu"),
-        keras.layers.Conv2D(128, kernel_size=(3, 3), activation="relu"),
-        keras.layers.GlobalAveragePooling2D(),
-        keras.layers.Dropout(0.5),
-        keras.layers.Dense(cfg.NUM_CLASSES, activation="softmax"),
-    ]
-)
+model = keras.applications.MobileNet(
+    input_shape=cfg.INPUT_SHAPE,
+    alpha=0.25,
+    weights=None,
+    classes=cfg.NUM_CLASSES)
 
 """
 Here's our model summary:
@@ -78,18 +70,31 @@ and the metrics to monitor. Note that with the JAX and TensorFlow backends,
 XLA compilation is turned on by default.
 """
 
+initial_learning_rate = 0.005
+lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate, decay_steps=10000, decay_rate=0.96, staircase=True
+)
+
 model.compile(
     loss=keras.losses.SparseCategoricalCrossentropy(),
-    optimizer=keras.optimizers.Adam(learning_rate=1e-3),
+    optimizer=keras.optimizers.AdamW(learning_rate=lr_schedule),
     metrics=[
         keras.metrics.SparseCategoricalAccuracy(name="acc"),
     ],
 )
 
+model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+    filepath=cfg.CHECKPOINT_FILE,
+    save_weights_only=True,
+    monitor='val_accuracy',
+    mode='max',
+    save_best_only=True)
+
 
 model.fit(
-    train, epochs=10, verbose=1, steps_per_epoch=(cfg.COUNT_PERSON_SAMPLES_TRAIN//cfg.BATCH_SIZE), validation_data=val
+    train, epochs=100, verbose=1, validation_data=val,
+    callbacks=[model_checkpoint_callback]
 )
-score = model.evaluate(test, verbose=0)
+score = model.evaluate(test, verbose=1)
 print(score)
 model.save(cfg.SAVE_FILE)
