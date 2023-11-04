@@ -21,9 +21,9 @@ from vww_loader import get_vww
 from pathlib import Path
 import yaml
 
-
-with tf.io.gfile.GFile(f'{cfg.CHECKPOINT_DIR}config.yaml', 'w') as fp:
-    yaml.dump(cfg.to_yaml(), fp)
+# TODO fix checkpointing
+# with tf.io.gfile.GFile(f'{cfg.CHECKPOINT_DIR}config.yaml', 'w') as fp:
+#     yaml.dump(cfg.to_yaml(), fp)
 
 
 #get data
@@ -62,17 +62,18 @@ model.compile(
     ],
 )
 
-model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
-    filepath=cfg.CHECKPOINT_DIR,
-    save_weights_only=True,
-    monitor='val_accuracy',
-    mode='max',
-    save_best_only=True)
+# TODO fix checkpointing
+# model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+#     filepath=f"{cfg.CHECKPOINT_DIR}checkpoint.weights.h5",
+#     save_weights_only=True,
+#     monitor='val_acc',
+#     mode='max',
+#     save_best_only=True)
 
 
 model.fit(
     train, epochs=cfg.EPOCHS, verbose=1, validation_data=val,
-    callbacks=[model_checkpoint_callback]
+    # callbacks=[model_checkpoint_callback]
 )
 score = model.evaluate(test, verbose=1)
 print(score)

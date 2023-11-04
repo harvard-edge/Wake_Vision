@@ -3,17 +3,19 @@ from ml_collections import config_dict
 
 
 cfg = config_dict.ConfigDict()
+
+cfg.BUCKET_NAME = "gs://wake-vision-storage/"
 cfg.EXPERIMENT_TIME = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
 
 cfg.TARGET_DS = "wv"
 
 cfg.MODEL_NAME = f"{cfg.TARGET_DS}_mobilenetv1"
 
-cfg.WV_DIR = "gs://wake-vision/tensorflow_datasets"
-cfg.VWW_DIR = "gs://wake-vision/vww"
+cfg.WV_DIR = f"{cfg.BUCKET_NAME}tensorflow_datasets"
+cfg.VWW_DIR = f"{cfg.BUCKET_NAME}vww"
 
-cfg.CHECKPOINT_DIR = f"gs://wake-vision/checkpoints/{cfg.EXPERIMENT_TIME}/{cfg.MODEL_NAME}/"
-cfg.SAVE_DIR = f"gs://wake-vision/saved_models/{cfg.EXPERIMENT_TIME}/"
+cfg.CHECKPOINT_DIR = f"{cfg.BUCKET_NAME}checkpoints/{cfg.EXPERIMENT_TIME}/{cfg.MODEL_NAME}/"
+cfg.SAVE_DIR = f"{cfg.BUCKET_NAME}saved_models/{cfg.EXPERIMENT_TIME}/"
 cfg.SAVE_FILE = cfg.SAVE_DIR+f"{cfg.MODEL_NAME}.keras"
 
 cfg.COUNT_PERSON_SAMPLES_TRAIN = 844965  # Number of person samples in the train sdataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
@@ -26,7 +28,7 @@ cfg.NUM_CLASSES = 2
 cfg.MODEL_SIZE = 0.25
 
 #Train Config
-cfg.EPOCHS = 100
+cfg.EPOCHS = 50
 cfg.BATCH_SIZE = 128
 cfg.INIT_LR = 0.001
 cfg.DECAY_STEPS = 10000
