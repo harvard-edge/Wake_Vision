@@ -48,35 +48,47 @@ def label_person_image_labels(
 def label_person_bbox_labels(
     ds_entry,
 ):
-    # Bounding box labels include some human body parts which is hard to determine whether to label "person". We label them as -1 here so that they get selected by neither the person or the not person filter.
+    # Bounding box labels aren't hierarchical, and therefore we need to manually label person subclasses.
     if tf.reduce_any([
-        tf.equal(tf.constant(68, tf.int64), ds_entry["bobjects"]["label"]), # Person 
-        tf.equal(tf.constant(227, tf.int64), ds_entry["bobjects"]["label"]), # Woman
-        tf.equal(tf.constant(307, tf.int64), ds_entry["bobjects"]["label"]), # Man
-        tf.equal(tf.constant(332, tf.int64), ds_entry["bobjects"]["label"]), # Girl
-        tf.equal(tf.constant(876, tf.int64), ds_entry["bobjects"]["label"]), # Boy
-        tf.equal(tf.constant(501, tf.int64), ds_entry["bobjects"]["label"]), # Human face
-        tf.equal(tf.constant(291, tf.int64), ds_entry["bobjects"]["label"]), # Human head                                              
-    ]):  # Bounding box labels aren't hierarchical, and therefore we need to manually label person subclasses.
+        check_bbox_label(ds_entry, 68), # Person 
+        check_bbox_label(ds_entry, 227), # Woman
+        check_bbox_label(ds_entry, 307), # Man
+        check_bbox_label(ds_entry, 332), # Girl
+        check_bbox_label(ds_entry, 876), # Boy
+        check_bbox_label(ds_entry, 501), # Human face
+        check_bbox_label(ds_entry, 291), # Human head                                              
+    ]):  
         ds_entry["person"] = 1
+    # Bounding box labels include some human body parts which is hard to determine whether to label "person". We label them as -1 here so that they get selected by neither the person or the not person filter.
     elif tf.reduce_any([
-        tf.equal(tf.constant(176, tf.int64), ds_entry["bobjects"]["label"]), # Human body
-        tf.equal(tf.constant(14, tf.int64), ds_entry["bobjects"]["label"]), # Human eye 
-        tf.equal(tf.constant(29, tf.int64), ds_entry["bobjects"]["label"]), # Skull
-        tf.equal(tf.constant(147, tf.int64), ds_entry["bobjects"]["label"]), # Human mouth
-        tf.equal(tf.constant(223, tf.int64), ds_entry["bobjects"]["label"]), # Human ear
-        tf.equal(tf.constant(567, tf.int64), ds_entry["bobjects"]["label"]), # Human nose
-        tf.equal(tf.constant(252, tf.int64), ds_entry["bobjects"]["label"]), # Human hair
-        tf.equal(tf.constant(572, tf.int64), ds_entry["bobjects"]["label"]), # Human hand
-        tf.equal(tf.constant(213, tf.int64), ds_entry["bobjects"]["label"]), # Human foot
-        tf.equal(tf.constant(502, tf.int64), ds_entry["bobjects"]["label"]), # Human arm
-        tf.equal(tf.constant(220, tf.int64), ds_entry["bobjects"]["label"]), # Human leg
-        tf.equal(tf.constant(20, tf.int64), ds_entry["bobjects"]["label"]), # Beard
+        check_bbox_label(ds_entry, 176), # Human body
+        check_bbox_label(ds_entry, 14), # Human eye
+        check_bbox_label(ds_entry, 29), # Skull
+        check_bbox_label(ds_entry, 147), # Human mouth
+        check_bbox_label(ds_entry, 223), # Human ear
+        check_bbox_label(ds_entry, 567), # Human nose
+        check_bbox_label(ds_entry, 252), # Human hair
+        check_bbox_label(ds_entry, 572), # Human hand
+        check_bbox_label(ds_entry, 213), # Human foot
+        check_bbox_label(ds_entry, 502), # Human arm
+        check_bbox_label(ds_entry, 220), # Human leg
+        check_bbox_label(ds_entry, 20), # Beard
     ]):
         ds_entry["person"] = -1
     else:
         ds_entry["person"] = 0
     return ds_entry
+
+# This function checks for the presence of a bounding box object occupying a certain size in the ds_entry. Size can be configured in experiment_config.py.
+def check_bbox_label(ds_entry, label_number):
+    return_value = False #This extra variable is needed as tensorflow does not allow return statements in loops.
+    object_present_tensor = tf.equal(tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"])
+    bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
+    for bounding_box in bounding_boxes:
+        if ((bounding_box[2] - bounding_box[0]) * (bounding_box[3] - bounding_box[1])) > cfg.MIN_BBOX_SIZE:
+            return_value = True
+    return return_value 
+
 
 
 def person_filter(ds_entry):
