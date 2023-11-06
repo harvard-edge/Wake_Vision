@@ -8,6 +8,7 @@ cfg.BUCKET_NAME = "gs://wake-vision-storage/"
 cfg.EXPERIMENT_TIME = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
 
 cfg.TARGET_DS = "wv"
+cfg.LABEL_TYPE = "image" # Only used for the wake_vision dataset. Specifies whether to use open images image-level labels or bounding boxes. Available options are "image" or "bbox".
 
 cfg.MODEL_NAME = f"{cfg.TARGET_DS}_mobilenetv1"
 
