@@ -7,7 +7,7 @@ cfg = config_dict.ConfigDict()
 cfg.BUCKET_NAME = "gs://wake-vision-storage/"
 cfg.EXPERIMENT_TIME = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
 
-cfg.TARGET_DS = "wv"
+cfg.TARGET_DS = "vww"
 
 cfg.MODEL_NAME = f"{cfg.TARGET_DS}_mobilenetv1"
 

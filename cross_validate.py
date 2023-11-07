@@ -14,8 +14,8 @@ import tensorflow_datasets as tfds
 from wake_vision_loader import get_wake_vision
 from vww_loader import get_vww
 
-vww_model = keras.saving.load_model("../vww_cnn.keras")
-wv_model = keras.saving.load_model("../wv_cnn.keras")
+vww_model = keras.saving.load_model("gs://wake-vision-storage/saved_models/2023_11_06-03_59_51_PM/vww_mobilenetv1.keras")
+wv_model = keras.saving.load_model("gs://wake-vision-storage/saved_models/2023_11_04-05_43_55_PM/wv_mobilenetv1.keras")
 
 
 _, _, vww_test = get_vww()
