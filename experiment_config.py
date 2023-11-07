@@ -7,7 +7,9 @@ cfg = config_dict.ConfigDict()
 cfg.BUCKET_NAME = "gs://wake-vision-storage/"
 cfg.EXPERIMENT_TIME = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
 
-cfg.TARGET_DS = "vww"
+cfg.TARGET_DS = "wv"
+cfg.LABEL_TYPE = "bbox" # Only used for the wake_vision dataset. Specifies whether to use open images image-level labels or bounding boxes. Available options are "image" or "bbox".
+cfg.MIN_BBOX_SIZE = 0.05 # Minimum size of bounding box containing person or subclass for image to be labelled as person. Only works for the wake vision dataset. The visual wake words dataset sets this to 0.05.
 
 cfg.MODEL_NAME = f"{cfg.TARGET_DS}_mobilenetv1"
 
