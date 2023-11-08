@@ -44,9 +44,65 @@ def label_person_image_labels(
     ds_entry,
 ):
     if tf.reduce_any(
-        tf.equal(tf.constant(1208, tf.int64), ds_entry["objects"]["label"])
-    ):  # 1208 is the integer value for the image level label for person. Image level labels are hierarchical and thus the person label includes subclasses of persons.
+        [
+            tf.equal(
+                tf.constant(1208, tf.int64), ds_entry["objects"]["label"]
+            ),  # Person
+            tf.equal(
+                tf.constant(7212, tf.int64), ds_entry["objects"]["label"]
+            ),  # Woman
+            tf.equal(tf.constant(10693, tf.int64), ds_entry["objects"]["label"]),  # Man
+            tf.equal(
+                tf.constant(11877, tf.int64), ds_entry["objects"]["label"]
+            ),  # Girl
+            tf.equal(tf.constant(876, tf.int64), ds_entry["objects"]["label"]),  # Boy
+            tf.equal(
+                tf.constant(17410, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human face
+            tf.equal(
+                tf.constant(9930, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human head
+        ]
+    ):
         ds_entry["person"] = 1
+    # Image level labels include some human body parts which is hard to determine whether to label "person". We label them as -1 here so that they get selected by neither the person or the not person filter.
+    elif tf.reduce_any(
+        [
+            tf.equal(
+                tf.constant(5075, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human body
+            tf.equal(
+                tf.constant(311, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human eye
+            tf.equal(tf.constant(483, tf.int64), ds_entry["objects"]["label"]),  # Skull
+            tf.equal(
+                tf.constant(4129, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human mouth
+            tf.equal(
+                tf.constant(7172, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human ear
+            tf.equal(
+                tf.constant(19450, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human nose
+            tf.equal(
+                tf.constant(8309, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human hair
+            tf.equal(
+                tf.constant(19486, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human hand
+            tf.equal(
+                tf.constant(6750, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human foot
+            tf.equal(
+                tf.constant(17415, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human arm
+            tf.equal(
+                tf.constant(6966, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human leg
+            tf.equal(tf.constant(369, tf.int64), ds_entry["objects"]["label"]),  # Beard
+        ]
+    ):
+        ds_entry["person"] = -1
     else:
         ds_entry["person"] = 0
     return ds_entry
@@ -55,7 +111,6 @@ def label_person_image_labels(
 def label_person_bbox_labels(
     ds_entry,
 ):
-    # Bounding box labels aren't hierarchical, and therefore we need to manually label person subclasses.
     if tf.reduce_any(
         [
             check_bbox_label(ds_entry, 68),  # Person
