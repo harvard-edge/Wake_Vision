@@ -9,11 +9,17 @@ import pp_ops
 def open_images_to_vww2(ds_split, count_person_samples):
     # Use either the image level labels or bounding box labels (according to configuration) already in the open images dataset to label images as containing a person or no person
     if cfg.LABEL_TYPE == "image":
-        ds_split = ds_split.map(label_person_image_labels, num_parallel_calls=tf.data.AUTOTUNE)
+        ds_split = ds_split.map(
+            label_person_image_labels, num_parallel_calls=tf.data.AUTOTUNE
+        )
     elif cfg.LABEL_TYPE == "bbox":
-        ds_split = ds_split.map(label_person_bbox_labels, num_parallel_calls=tf.data.AUTOTUNE)
+        ds_split = ds_split.map(
+            label_person_bbox_labels, num_parallel_calls=tf.data.AUTOTUNE
+        )
     else:
-        raise ValueError("Configuration option \"Label Type\" must be \"image\" or \"bbox\" for the Wake Vision Dataset.")
+        raise ValueError(
+            'Configuration option "Label Type" must be "image" or "bbox" for the Wake Vision Dataset.'
+        )
 
     # Filter the dataset into a part with persons and a part with no persons
     person_ds = ds_split.filter(person_filter)
@@ -45,50 +51,59 @@ def label_person_image_labels(
         ds_entry["person"] = 0
     return ds_entry
 
+
 def label_person_bbox_labels(
     ds_entry,
 ):
     # Bounding box labels aren't hierarchical, and therefore we need to manually label person subclasses.
-    if tf.reduce_any([
-        check_bbox_label(ds_entry, 68), # Person 
-        check_bbox_label(ds_entry, 227), # Woman
-        check_bbox_label(ds_entry, 307), # Man
-        check_bbox_label(ds_entry, 332), # Girl
-        check_bbox_label(ds_entry, 876), # Boy
-        check_bbox_label(ds_entry, 501), # Human face
-        check_bbox_label(ds_entry, 291), # Human head                                              
-    ]):  
+    if tf.reduce_any(
+        [
+            check_bbox_label(ds_entry, 68),  # Person
+            check_bbox_label(ds_entry, 227),  # Woman
+            check_bbox_label(ds_entry, 307),  # Man
+            check_bbox_label(ds_entry, 332),  # Girl
+            check_bbox_label(ds_entry, 50),  # Boy
+            check_bbox_label(ds_entry, 501),  # Human face
+            check_bbox_label(ds_entry, 291),  # Human head
+        ]
+    ):
         ds_entry["person"] = 1
     # Bounding box labels include some human body parts which is hard to determine whether to label "person". We label them as -1 here so that they get selected by neither the person or the not person filter.
-    elif tf.reduce_any([
-        check_bbox_label(ds_entry, 176), # Human body
-        check_bbox_label(ds_entry, 14), # Human eye
-        check_bbox_label(ds_entry, 29), # Skull
-        check_bbox_label(ds_entry, 147), # Human mouth
-        check_bbox_label(ds_entry, 223), # Human ear
-        check_bbox_label(ds_entry, 567), # Human nose
-        check_bbox_label(ds_entry, 252), # Human hair
-        check_bbox_label(ds_entry, 572), # Human hand
-        check_bbox_label(ds_entry, 213), # Human foot
-        check_bbox_label(ds_entry, 502), # Human arm
-        check_bbox_label(ds_entry, 220), # Human leg
-        check_bbox_label(ds_entry, 20), # Beard
-    ]):
+    elif tf.reduce_any(
+        [
+            check_bbox_label(ds_entry, 176),  # Human body
+            check_bbox_label(ds_entry, 14),  # Human eye
+            check_bbox_label(ds_entry, 29),  # Skull
+            check_bbox_label(ds_entry, 147),  # Human mouth
+            check_bbox_label(ds_entry, 223),  # Human ear
+            check_bbox_label(ds_entry, 567),  # Human nose
+            check_bbox_label(ds_entry, 252),  # Human hair
+            check_bbox_label(ds_entry, 572),  # Human hand
+            check_bbox_label(ds_entry, 213),  # Human foot
+            check_bbox_label(ds_entry, 502),  # Human arm
+            check_bbox_label(ds_entry, 220),  # Human leg
+            check_bbox_label(ds_entry, 20),  # Beard
+        ]
+    ):
         ds_entry["person"] = -1
     else:
         ds_entry["person"] = 0
     return ds_entry
 
+
 # This function checks for the presence of a bounding box object occupying a certain size in the ds_entry. Size can be configured in experiment_config.py.
 def check_bbox_label(ds_entry, label_number):
-    return_value = False #This extra variable is needed as tensorflow does not allow return statements in loops.
-    object_present_tensor = tf.equal(tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"])
+    return_value = False  # This extra variable is needed as tensorflow does not allow return statements in loops.
+    object_present_tensor = tf.equal(
+        tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
+    )
     bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
     for bounding_box in bounding_boxes:
-        if ((bounding_box[2] - bounding_box[0]) * (bounding_box[3] - bounding_box[1])) > cfg.MIN_BBOX_SIZE:
+        if (
+            (bounding_box[2] - bounding_box[0]) * (bounding_box[3] - bounding_box[1])
+        ) > cfg.MIN_BBOX_SIZE:
             return_value = True
-    return return_value 
-
+    return return_value
 
 
 def person_filter(ds_entry):
@@ -101,18 +116,26 @@ def non_person_filter(ds_entry):
 
 def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
     # Convert values from int8 to float32
-    ds_split = ds_split.map(pp_ops.cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE)
+    ds_split = ds_split.map(
+        pp_ops.cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE
+    )
 
     if train:
         # inception crop
-        ds_split = ds_split.map(pp_ops.inception_crop, num_parallel_calls=tf.data.AUTOTUNE)
+        ds_split = ds_split.map(
+            pp_ops.inception_crop, num_parallel_calls=tf.data.AUTOTUNE
+        )
         # resize
         ds_split = ds_split.map(pp_ops.resize, num_parallel_calls=tf.data.AUTOTUNE)
         # flip
-        ds_split = ds_split.map(pp_ops.random_flip_lr, num_parallel_calls=tf.data.AUTOTUNE)
+        ds_split = ds_split.map(
+            pp_ops.random_flip_lr, num_parallel_calls=tf.data.AUTOTUNE
+        )
     else:
         # resize small
-        ds_split = ds_split.map(pp_ops.resize_small, num_parallel_calls=tf.data.AUTOTUNE)
+        ds_split = ds_split.map(
+            pp_ops.resize_small, num_parallel_calls=tf.data.AUTOTUNE
+        )
         # center crop
         ds_split = ds_split.map(pp_ops.center_crop, num_parallel_calls=tf.data.AUTOTUNE)
 
@@ -122,15 +145,15 @@ def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
     )
 
     # Convert each dataset entry from a dictionary to a tuple of (img, label) to be used by the keras API.
-    ds_split = ds_split.map(pp_ops.prepare_supervised, num_parallel_calls=tf.data.AUTOTUNE)
+    ds_split = ds_split.map(
+        pp_ops.prepare_supervised, num_parallel_calls=tf.data.AUTOTUNE
+    )
 
     # Batch and prefetch the dataset for improved performance
     return ds_split.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
 
-
 def get_wake_vision(batch_size=cfg.BATCH_SIZE):
-
     ds = tfds.load(
         "open_images_v4/200k",
         data_dir=cfg.WV_DIR,
@@ -138,7 +161,9 @@ def get_wake_vision(batch_size=cfg.BATCH_SIZE):
     )
 
     ds["train"] = open_images_to_vww2(ds["train"], cfg.COUNT_PERSON_SAMPLES_TRAIN)
-    ds["validation"] = open_images_to_vww2(ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL)
+    ds["validation"] = open_images_to_vww2(
+        ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL
+    )
     ds["test"] = open_images_to_vww2(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST)
 
     train = preprocessing(ds["train"], batch_size, train=True)
