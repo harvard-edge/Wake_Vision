@@ -62,6 +62,25 @@ def label_person_image_labels(
             tf.equal(
                 tf.constant(9930, tf.int64), ds_entry["objects"]["label"]
             ),  # Human head
+            tf.equal(
+                tf.constant(17112, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human
+            tf.equal(
+                tf.constant(6637, tf.int64), ds_entry["objects"]["label"]
+            ),  # Female person
+            tf.equal(
+                tf.constant(12187, tf.int64), ds_entry["objects"]["label"]
+            ),  # Male person
+            tf.equal(
+                tf.constant(19977, tf.int64), ds_entry["objects"]["label"]
+            ),  # Child
+            tf.equal(tf.constant(5201, tf.int64), ds_entry["objects"]["label"]),  # Lady
+            tf.equal(
+                tf.constant(19617, tf.int64), ds_entry["objects"]["label"]
+            ),  # Adolescent
+            tf.equal(
+                tf.constant(2873, tf.int64), ds_entry["objects"]["label"]
+            ),  # Youth
         ]
     ):
         ds_entry["person"] = 1
