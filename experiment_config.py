@@ -7,7 +7,7 @@ cfg = config_dict.ConfigDict()
 cfg.BUCKET_NAME = "gs://wake-vision-storage/"
 cfg.EXPERIMENT_TIME = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
 
-cfg.TARGET_DS = "wv"
+cfg.TARGET_DS = "vww"
 cfg.LABEL_TYPE = "bbox" # Only used for the wake_vision dataset. Specifies whether to use open images image-level labels or bounding boxes. Available options are "image" or "bbox".
 cfg.MIN_BBOX_SIZE = 0.05 # Minimum size of bounding box containing person or subclass for image to be labelled as person. Only works for the wake vision dataset. The visual wake words dataset sets this to 0.05.
 
@@ -20,7 +20,7 @@ cfg.CHECKPOINT_DIR = f"{cfg.BUCKET_NAME}checkpoints/{cfg.EXPERIMENT_TIME}/{cfg.M
 cfg.SAVE_DIR = f"{cfg.BUCKET_NAME}saved_models/{cfg.EXPERIMENT_TIME}/"
 cfg.SAVE_FILE = cfg.SAVE_DIR+f"{cfg.MODEL_NAME}.keras"
 
-cfg.COUNT_PERSON_SAMPLES_TRAIN = 844965  # Number of person samples in the train sdataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
+cfg.COUNT_PERSON_SAMPLES_TRAIN = 844965  # Number of person samples in the WV train dataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
 cfg.COUNT_PERSON_SAMPLES_VAL = 9973  # There are 31647 non-person samples.
 cfg.COUNT_PERSON_SAMPLES_TEST = 30226  # There are 95210 non-person samples. The distribution of persons in both the Val and Test set is close to 24% (Val:23.96) (Test:24.09) so we may not need to reduce the size of these.
 
@@ -30,8 +30,10 @@ cfg.NUM_CLASSES = 2
 cfg.MODEL_SIZE = 0.25
 
 #Train Config
-cfg.EPOCHS = 50
+cfg.STEPS = 10 ** 5
+cfg.VAL_STEPS = 10 ** 4
 cfg.BATCH_SIZE = 128
 cfg.INIT_LR = 0.001
-cfg.DECAY_STEPS = 10000
-cfg.DECAY_RATE = 0.96
+cfg.DECAY_STEPS = 10 ** 4
+cfg.DECAY_RATE = 0.94
+cfg.SHUFFLE_BUFFER_SIZE = 1024

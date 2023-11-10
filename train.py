@@ -51,7 +51,7 @@ XLA compilation is turned on by default.
 """
 
 lr_schedule = keras.optimizers.schedules.ExponentialDecay(
-    cfg.INIT_LR, decay_steps=cfg.DECAY_STEPS, decay_rate=cfg.DECAY_RATE, staircase=True
+    cfg.INIT_LR, decay_steps=cfg.DECAY_STEPS, decay_rate=cfg.DECAY_RATE, staircase=False
 )
 
 model.compile(
@@ -70,9 +70,9 @@ model.compile(
 #     mode='max',
 #     save_best_only=True)
 
-
+#Train for a fixed number of steps, validating every
 model.fit(
-    train, epochs=cfg.EPOCHS, verbose=1, validation_data=val,
+    train, epochs=(cfg.STEPS//cfg.VAL_STEPS), steps_per_epoch=cfg.VAL_STEPS, validation_data=val,
     # callbacks=[model_checkpoint_callback]
 )
 score = model.evaluate(test, verbose=1)

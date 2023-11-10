@@ -13,6 +13,8 @@ def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
     ds_split = ds_split.map(pp_ops.cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE)
 
     if train:
+        # Repeat indefinitely and shuffle the dataset
+        ds_split = ds_split.repeat().shuffle(cfg.SHUFFLE_BUFFER_SIZE)
         # inception crop
         ds_split = ds_split.map(pp_ops.inception_crop, num_parallel_calls=tf.data.AUTOTUNE)
         # resize
