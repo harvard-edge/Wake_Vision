@@ -275,8 +275,8 @@ def _load_bboxes(csv_path, csv_positions, prefix):
         else:
             csv_f.readline()  # Drop headers
         if (
-            str(csv_path)
-            == "/home/emjn/tensorflow_datasets/downloads/openimages_v6_oidv6-train-annotations-bboxo4dXxAZfPjuOYCY-C3GFHEiwJr2M5GKQxCQk8Gj3-cY.csv"
+            str(os.path.basename(csv_path))
+            == "openimages_v6_oidv6-train-annotations-bboxo4dXxAZfPjuOYCY-C3GFHEiwJr2M5GKQxCQk8Gj3-cY.csv"
         ):
             for line in csv_f:
                 (
