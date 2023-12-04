@@ -1,5 +1,3 @@
-TODO(partial_open_images_v7): Markdown description of that will appear on the catalog page.
-Description is **formatted** as markdown.
+This is a dataset builder for the 7th version of the Open Images Dataset. At this point the builder only supports a part of the dataset, including image-level labels, bounding box labels and MAIP labels.
 
-It should also contain any processing which has been applied (if any),
-(e.g. corrupted example skipped, images cropped,...):
+The builder currently relies on all images being downloaded into the tensorflow datasets manual_dir according to the instructions found here: https://github.com/cvdfoundation/open-images-dataset#download-full-dataset-with-google-storage-transfer. All train images should go into a folder named "train", validation images into a folder named "validation", and test images into a folder named "test".
