@@ -248,11 +248,6 @@ class Builder(tfds.core.GeneratorBasedBuilder):
             file_name = os.path.basename(f)
             image_id = int(os.path.splitext(url_to_image_id[file_name])[0], 16)
             image_objects = [obj._asdict() for obj in objects.get(image_id, [])]
-            image_objects = [
-                image_object
-                for image_object in image_objects
-                if image_object["confidence"] >= 5
-            ]
             image_bboxes = [bbox._asdict() for bbox in bboxes.get(image_id, [])]
             image_miaps = (
                 [miap._asdict() for miap in miaps.get(image_id, [])]
