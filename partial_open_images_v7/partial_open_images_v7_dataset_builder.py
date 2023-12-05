@@ -42,6 +42,11 @@ TEST_BBOX_LABELS = (
     "https://storage.googleapis.com/openimages/v5/test-annotations-bbox.csv"
 )
 
+# Perceived Gender and Perceived Age Labels. We don't use the training labels as training on them could be considered unethical, and using potential training data in the validation or test set could taint those sets.
+# TRAIN_MIAP_LABELS = "https://storage.googleapis.com/openimages/open_images_extended_miap/open_images_extended_miap_boxes_train.csv"
+VAL_MIAP_LABELS = "https://storage.googleapis.com/openimages/open_images_extended_miap/open_images_extended_miap_boxes_val.csv"
+TEST_MIAP_LABELS = "https://storage.googleapis.com/openimages/open_images_extended_miap/open_images_extended_miap_boxes_test.csv"
+
 IMAGE_LEVEL_SOURCES = [
     "verification",
     "crowdsource-verification",  # human labels
@@ -52,6 +57,19 @@ BBOX_SOURCES = [
     "freeform",
     "xclick",  # Manually drawn boxes.
     "activemil",  # Machine generated, human controlled.
+]
+
+GENDER_PRESENTATION = [
+    "Predominantly Feminine",
+    "Predominantly Masculine",
+    "Unknown",
+]
+
+AGE_PRESENTATION = [
+    "Young",
+    "Middle",
+    "Old",
+    "Unknown",
 ]
 
 _Object = collections.namedtuple("Object", ["label", "confidence", "source"])
@@ -68,6 +86,21 @@ _Bbox = collections.namedtuple(
         "is_inside",
     ],
 )
+_MIAP = collections.namedtuple(
+    "MIAP",
+    [
+        "label",
+        "confidence",
+        "bbox",
+        "is_occluded",
+        "is_truncated",
+        "is_group_of",
+        "is_depiction",
+        "is_inside",
+        "gender_presentation",
+        "age_presentation",
+    ],
+)
 
 _URLS = {
     "train_image_ids": TRAIN_IMAGE_IDS,
@@ -82,6 +115,8 @@ _URLS = {
     "train-annotations-bbox": TRAIN_BBOX_LABELS,
     "test-annotations-bbox": TEST_BBOX_LABELS,
     "validation-annotations-bbox": VAL_BBOX_LABELS,
+    "validation-annotations-miap": VAL_MIAP_LABELS,
+    "test-annotations-miap": TEST_MIAP_LABELS,
 }
 
 
@@ -110,10 +145,13 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 os.path.join("object_detection", "open_images_classes_boxable.txt")
             )
         )
+        gender_presentation_class_label = tfds.features.ClassLabel(
+            names=GENDER_PRESENTATION
+        )
+        age_presentation_class_label = tfds.features.ClassLabel(names=AGE_PRESENTATION)
         return self.dataset_info_from_configs(
             features=tfds.features.FeaturesDict(
                 {
-                    # These are the features of your dataset like images, labels ...
                     "image": tfds.features.Image(
                         shape=(None, None, 3),
                         doc="Image from the Open Images v7 dataset",
@@ -141,6 +179,20 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                             "is_inside": np.int8,
                         }
                     ),
+                    "miaps": tfds.features.Sequence(
+                        {
+                            "label": boxable_class_label,
+                            "confidence": np.int32,
+                            "bbox": tfds.features.BBoxFeature(),
+                            "is_occluded": np.int8,
+                            "is_truncated": np.int8,
+                            "is_group_of": np.int8,
+                            "is_depiction": np.int8,
+                            "is_inside": np.int8,
+                            "gender_presentation": gender_presentation_class_label,
+                            "age_presentation": age_presentation_class_label,
+                        }
+                    ),
                 }
             ),
             # If there's a common (input, target) tuple from the
@@ -155,7 +207,6 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
         paths = dl_manager.download_and_extract(_URLS)
 
-        # TODO(partial_open_images_v7): Returns the Dict[split names, Iterator[Key, Example]]
         return {
             "train": self._generate_examples(
                 dl_manager.manual_dir / "train", "train", paths
@@ -187,11 +238,16 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
         objects = objects(None)
         bboxes = bboxes(None)
+        if split != "train":
+            miaps = _load_miaps(paths[f"{split}-annotations-miap"])
 
         url_to_image_id = _load_image_ids(paths[f"{split}_image_ids"])
 
         for f in path.glob("*.jpg"):
             file_name = os.path.basename(f)
+            # Some images in the dataset do not seem to be in the image id file
+            if url_to_image_id.get(file_name) is None:
+                continue
             image_id = int(os.path.splitext(url_to_image_id[file_name])[0], 16)
             image_objects = [obj._asdict() for obj in objects.get(image_id, [])]
             image_objects = [
@@ -200,11 +256,18 @@ class Builder(tfds.core.GeneratorBasedBuilder):
                 if image_object["confidence"] >= 5
             ]
             image_bboxes = [bbox._asdict() for bbox in bboxes.get(image_id, [])]
+            image_miaps = (
+                [miap._asdict() for miap in miaps.get(image_id, [])]
+                if split != "train"
+                else []
+            )
+
             yield str(image_id), {
                 "image": _resize_image_if_necessary(f, target_pixels=MAX_PIXELS),
                 "image/filename": file_name,
                 "objects": image_objects,
                 "bobjects": image_bboxes,
+                "miaps": image_miaps,
             }
 
 
@@ -246,6 +309,44 @@ def _load_image_ids(csv_path):
     return images
 
 
+def _load_miaps(csv_path):
+    miaps = collections.defaultdict(list)
+    with epath.Path(csv_path).open(mode="rb") as csv_f:
+        csv_f.readline()
+        for line in csv_f:
+            (
+                image_id,
+                label,
+                confidence,
+                xmin,
+                xmax,
+                ymin,
+                ymax,
+                is_occluded,
+                is_truncated,
+                is_group_of,
+                is_depiction,
+                is_inside,
+                gender_presentation,
+                age_presentation,
+            ) = _read_csv_line(line)
+            image_id = int(image_id, 16)
+            current_row = _MIAP(
+                label,
+                confidence,
+                tfds.features.BBox(float(ymin), float(xmin), float(ymax), float(xmax)),
+                int(is_occluded),
+                int(is_truncated),
+                int(is_group_of),
+                int(is_depiction),
+                int(is_inside),
+                gender_presentation,
+                age_presentation,
+            )
+            miaps[image_id].append(current_row)
+    return dict(miaps)
+
+
 def _load_objects(csv_paths, csv_positions, prefix):
     """Returns objects listed within given CSV files."""
     objects = collections.defaultdict(list)
@@ -274,10 +375,7 @@ def _load_bboxes(csv_path, csv_positions, prefix):
             csv_f.seek(csv_positions[0])
         else:
             csv_f.readline()  # Drop headers
-        if (
-            str(os.path.basename(csv_path))
-            == "openimages_v6_oidv6-train-annotations-bboxo4dXxAZfPjuOYCY-C3GFHEiwJr2M5GKQxCQk8Gj3-cY.csv"
-        ):
+        if "openimages_v6_oidv6-train-annotations-bbox" in str(csv_path):
             for line in csv_f:
                 (
                     image_id,
