@@ -17,9 +17,9 @@ JPEG_QUALITY = 72
 
 
 # Image Ids
-TRAIN_IMAGE_IDS = "https://storage.googleapis.com/openimages/v6/oidv6-train-images-with-labels-with-rotation.csv"
-VAL_IMAGE_IDS = "https://storage.googleapis.com/openimages/2018_04/validation/validation-images-with-rotation.csv"
-TEST_IMAGE_IDS = "https://storage.googleapis.com/openimages/2018_04/test/test-images-with-rotation.csv"
+IMAGE_IDS = (
+    "https://storage.googleapis.com/openimages/2018_04/image_ids_and_rotation.csv"
+)
 
 
 # Image level label source
@@ -103,9 +103,7 @@ _MIAP = collections.namedtuple(
 )
 
 _URLS = {
-    "train_image_ids": TRAIN_IMAGE_IDS,
-    "test_image_ids": TEST_IMAGE_IDS,
-    "validation_image_ids": VAL_IMAGE_IDS,
+    "image_ids": IMAGE_IDS,
     "train_human_labels": TRAIN_HUMAN_LABELS,
     "train_machine_labels": TRAIN_MACHINE_LABELS,
     "test_human_labels": TEST_HUMAN_LABELS,
@@ -207,19 +205,24 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
         paths = dl_manager.download_and_extract(_URLS)
 
+        url_to_image_id = _load_image_ids(paths["image_ids"])
+
         return {
             "train": self._generate_examples(
-                dl_manager.manual_dir / "train", "train", paths
+                dl_manager.manual_dir / "train", "train", paths, url_to_image_id
             ),
             "validation": self._generate_examples(
-                dl_manager.manual_dir / "validation", "validation", paths
+                dl_manager.manual_dir / "validation",
+                "validation",
+                paths,
+                url_to_image_id,
             ),
             "test": self._generate_examples(
-                dl_manager.manual_dir / "test", "test", paths
+                dl_manager.manual_dir / "test", "test", paths, url_to_image_id
             ),
         }
 
-    def _generate_examples(self, path, split, paths):
+    def _generate_examples(self, path, split, paths, url_to_image_id):
         """Yields examples."""
 
         def load(names):
@@ -241,13 +244,8 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         if split != "train":
             miaps = _load_miaps(paths[f"{split}-annotations-miap"])
 
-        url_to_image_id = _load_image_ids(paths[f"{split}_image_ids"])
-
         for f in path.glob("*.jpg"):
             file_name = os.path.basename(f)
-            # Some images in the dataset do not seem to be in the image id file
-            if url_to_image_id.get(file_name) is None:
-                continue
             image_id = int(os.path.splitext(url_to_image_id[file_name])[0], 16)
             image_objects = [obj._asdict() for obj in objects.get(image_id, [])]
             image_objects = [

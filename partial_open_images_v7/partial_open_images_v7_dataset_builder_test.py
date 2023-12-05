@@ -5,7 +5,7 @@ import tensorflow_datasets as tfds
 class PartialOpenImagesV7(tfds.testing.DatasetBuilderTestCase):
     DATASET_CLASS = partial_open_images_v7_dataset_builder.Builder
     SPLITS = {
-        "train": 8,  # Number of fake train examples. One file does not result in a sample.
+        "train": 9,  # Number of fake train examples.
         "validation": 5,  # Number of fake validation examples
         "test": 5,  # Number of fake test examples
     }
@@ -17,9 +17,7 @@ class PartialOpenImagesV7(tfds.testing.DatasetBuilderTestCase):
     # DL_EXTRACT_RESULT = {'some_key': 'output_file1.txt', ...}
 
     DL_EXTRACT_RESULT = {
-        "train_image_ids": "train_images.csv",
-        "test_image_ids": "test-images-with-rotation.csv",
-        "validation_image_ids": "validation-images-with-rotation.csv",
+        "image_ids": "image_ids_reduced.csv",
         "train_human_labels": "train_human_labels.csv",
         "train_machine_labels": "train_machine_labels.csv",
         "test_human_labels": "oidv7-test-annotations-human-imagelabels.csv",
