@@ -1,10 +1,8 @@
-# Use this file to turn the downloaded images into a tar archive for faster processing.
+# A parallel version of bootstrap_open_images.py. Mainly useful for processing the very large training set. Beware that this script may use a large amount of disk space as the tar archives seem to be created locally before being uploaded to the cloud.
 
-from google.cloud import storage
 from google.api_core.exceptions import ServiceUnavailable
 import os
-import sys
-from tqdm import tqdm
+import multiprocessing
 import time
 import tarfile
 import io
@@ -16,11 +14,11 @@ SPLIT = "train"
 TARGET_PIXELS = 200000
 JPEG_QUALITY = 72
 
-source_bucket = storage.Client().bucket("wake-vision-storage")
+# This can be reduced in case not enough memory is available on the device
+FROM_PREFIX = 10
+TO_PREFIX = 99  # Inclusive
 
-if len(sys.argv) != 2:
-    print("Usage: python bootstrap_open_images.py <prefix>")
-    exit(1)
+prefixes = [f"{x}" for x in range(FROM_PREFIX, TO_PREFIX + 1)]
 
 
 def _resize_image_if_necessary(image_fobj, target_pixels=None):
@@ -48,11 +46,11 @@ def tar_blobs(prefix):
     with epath.Path(
         f"gs://wake-vision-storage/tensorflow_datasets/downloads/manual/wake-vision-{SPLIT}-{prefix}.tar"
     ).open("w") as fobj:
-        tar_file = tarfile.open(fileobj=fobj, mode="w")
-        path = epath.Path(
+        tar_file = tarfile.TarFile(fileobj=fobj, mode="w")
+        blob_path = epath.Path(
             f"gs://wake-vision-storage/tensorflow_datasets/downloads/manual/{SPLIT}"
         )
-        for blob in tqdm(path.glob(f"{prefix}*.jpg")):
+        for blob in blob_path.glob(f"{prefix}*.jpg"):
             while True:
                 try:
                     blob_path = f"/tmp/{os.path.basename(blob.name)}"
@@ -70,4 +68,5 @@ def tar_blobs(prefix):
         tar_file.close()
 
 
-tar_blobs(sys.argv[1])
+processor_pool = multiprocessing.Pool()
+processor_pool.map(tar_blobs, prefixes)
