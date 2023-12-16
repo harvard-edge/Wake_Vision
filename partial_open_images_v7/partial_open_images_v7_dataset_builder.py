@@ -12,9 +12,6 @@ from etils import epath
 import functools
 from typing import List
 
-MAX_PIXELS = 200000
-JPEG_QUALITY = 72
-
 
 # Image Ids
 IMAGE_IDS = (
@@ -68,7 +65,7 @@ GENDER_PRESENTATION = [
 AGE_PRESENTATION = [
     "Young",
     "Middle",
-    "Old",
+    "Older",
     "Unknown",
 ]
 
@@ -122,7 +119,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
     """DatasetBuilder for partial_open_images_v7 dataset."""
 
     MANUAL_DOWNLOAD_INSTRUCTIONS = """
-        Please use the instructions provided at: https://github.com/cvdfoundation/open-images-dataset#download-full-dataset-with-google-storage-transfer to download the dataset images into tensorflow_datasets/downloads/manual/
+        Please use the instructions provided at: https://github.com/cvdfoundation/open-images-dataset#download-full-dataset-with-google-storage-transfer to download the dataset images into tensorflow_datasets/downloads/manual/. Then use the script at partial_open_images_v7/bootstrap_open_images.py to collapse the folder hierarchy inside the splits of the Open Images dataset and gather the image files in a tar library. The latter is necessary for the speed of the dataset creation.
         """
 
     VERSION = tfds.core.Version("1.0.0")
@@ -209,20 +206,20 @@ class Builder(tfds.core.GeneratorBasedBuilder):
 
         return {
             "train": self._generate_examples(
-                dl_manager.manual_dir / "train", "train", paths, url_to_image_id
+                dl_manager.manual_dir, "train", paths, url_to_image_id
             ),
             "validation": self._generate_examples(
-                dl_manager.manual_dir / "validation",
+                dl_manager.manual_dir,
                 "validation",
                 paths,
                 url_to_image_id,
             ),
             "test": self._generate_examples(
-                dl_manager.manual_dir / "test", "test", paths, url_to_image_id
+                dl_manager.manual_dir, "test", paths, url_to_image_id
             ),
         }
 
-    def _generate_examples(self, path, split, paths, url_to_image_id):
+    def _generate_examples(self, manual_dir, split, paths, url_to_image_id):
         """Yields examples."""
 
         def load(names):
@@ -244,44 +241,42 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         if split != "train":
             miaps = _load_miaps(paths[f"{split}-annotations-miap"])
 
-        for f in path.glob("*.jpg"):
-            file_name = os.path.basename(f)
-            image_id = int(os.path.splitext(url_to_image_id[file_name])[0], 16)
-            image_objects = [obj._asdict() for obj in objects.get(image_id, [])]
-            image_bboxes = [bbox._asdict() for bbox in bboxes.get(image_id, [])]
-            image_miaps = (
-                [miap._asdict() for miap in miaps.get(image_id, [])]
-                if split != "train"
-                else []
+        archives = []
+
+        if split == "train":
+            for prefix in range(10, 99 + 1):
+                archives.append(
+                    tfds.download.iter_archive(
+                        f"{manual_dir}/wake-vision-{split}-{prefix}.tar",
+                        tfds.download.ExtractMethod.TAR_STREAM,
+                    )
+                )
+        else:
+            archives.append(
+                tfds.download.iter_archive(
+                    f"{manual_dir}/wake-vision-{split}.tar",
+                    tfds.download.ExtractMethod.TAR_STREAM,
+                )
             )
+        for archive in archives:
+            for fpath, fobj in archive:
+                file_name = os.path.basename(fpath)
+                image_id = int(os.path.splitext(url_to_image_id[file_name])[0], 16)
+                image_objects = [obj._asdict() for obj in objects.get(image_id, [])]
+                image_bboxes = [bbox._asdict() for bbox in bboxes.get(image_id, [])]
+                image_miaps = (
+                    [miap._asdict() for miap in miaps.get(image_id, [])]
+                    if split != "train"
+                    else []
+                )
 
-            yield str(image_id), {
-                "image": _resize_image_if_necessary(f, target_pixels=MAX_PIXELS),
-                "image/filename": file_name,
-                "objects": image_objects,
-                "bobjects": image_bboxes,
-                "miaps": image_miaps,
-            }
-
-
-def _resize_image_if_necessary(image_fobj, target_pixels=None):
-    if target_pixels is None:
-        return image_fobj
-
-    cv2 = tfds.core.lazy_imports.cv2
-    # Decode image using OpenCV2.
-    image = cv2.imdecode(
-        np.frombuffer(image_fobj.read_bytes(), dtype=np.uint8), flags=3
-    )
-    # Get image height and width.
-    height, width, _ = image.shape
-    actual_pixels = height * width
-    if actual_pixels > target_pixels:
-        factor = np.sqrt(target_pixels / actual_pixels)
-        image = cv2.resize(image, dsize=None, fx=factor, fy=factor)
-    # Encode the image with quality=72 and store it in a BytesIO object.
-    _, buff = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), 72])
-    return io.BytesIO(buff.tobytes())
+                yield str(image_id), {
+                    "image": fobj,
+                    "image/filename": file_name,
+                    "objects": image_objects,
+                    "bobjects": image_bboxes,
+                    "miaps": image_miaps,
+                }
 
 
 def _read_csv_line(line: bytes) -> List[str]:
