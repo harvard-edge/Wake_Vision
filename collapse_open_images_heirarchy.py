@@ -1,4 +1,4 @@
-# Use this file to collapse the folder hierarchy inside the splits of the Open Images dataset.
+# Use this file to collapse the folder hierarchy inside the splits of the Open Images dataset. This currently needs to run before the bootstrap_open_images* scripts as the etil library used in those files does not support the "**" glob pattern. This script may incur extra costs - and it may be possible to avoid them by using the google.cloud.storage library directly in the bootstrap_open_images* scripts.
 
 from google.cloud import storage
 import os

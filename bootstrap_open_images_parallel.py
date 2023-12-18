@@ -14,7 +14,7 @@ SPLIT = "train"
 TARGET_PIXELS = 200000
 JPEG_QUALITY = 72
 
-# This can be reduced in case not enough memory is available on the device
+# This can be reduced in case not enough memory or storage is available on the device
 FROM_PREFIX = 10
 TO_PREFIX = 99  # Inclusive
 
