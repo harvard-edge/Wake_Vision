@@ -133,7 +133,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
             names=IMAGE_LEVEL_SOURCES + BBOX_SOURCES
         )
         all_class_label = tfds.features.ClassLabel(
-            names_file=f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/all-classes.txt"
+            names_file=f"{os.path.realpath(os.path.dirname(__file__))}/all-classes.txt"
         )
         boxable_class_label = tfds.features.ClassLabel(
             names_file=tfds.core.tfds_path(
