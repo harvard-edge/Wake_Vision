@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tensorflow_datasets as tfds
 import os
-import io
+import sys
 import csv
 import collections
 import numpy as np
@@ -133,7 +133,7 @@ class Builder(tfds.core.GeneratorBasedBuilder):
             names=IMAGE_LEVEL_SOURCES + BBOX_SOURCES
         )
         all_class_label = tfds.features.ClassLabel(
-            names_file="/home/emjn/vww-2/partial_open_images_v7/all-classes.txt"
+            names_file=f"{os.path.dirname(os.path.abspath(sys.argv[0]))}/all-classes.txt"
         )
         boxable_class_label = tfds.features.ClassLabel(
             names_file=tfds.core.tfds_path(
@@ -244,10 +244,10 @@ class Builder(tfds.core.GeneratorBasedBuilder):
         archives = []
 
         if split == "train":
-            for prefix in range(10, 99 + 1):
+            for train_part in manual_dir.glob("wake-vision-train*.tar"):
                 archives.append(
                     tfds.download.iter_archive(
-                        f"{manual_dir}/wake-vision-{split}-{prefix}.tar",
+                        train_part,
                         tfds.download.ExtractMethod.TAR_STREAM,
                     )
                 )
