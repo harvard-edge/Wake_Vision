@@ -3,6 +3,7 @@ import tensorflow_datasets as tfds
 
 from experiment_config import default_cfg
 import pp_ops
+import partial_open_images_v7.partial_open_images_v7_dataset_builder
 
 
 # A function to convert the "Train", "Validation" and "Test" parts of open images to their respective vww2 variants.
@@ -13,8 +14,10 @@ def open_images_to_vww2(ds_split, count_person_samples, cfg=default_cfg):
             label_person_image_labels, num_parallel_calls=tf.data.AUTOTUNE
         )
     elif cfg.LABEL_TYPE == "bbox":
+        
         ds_split = ds_split.map(
-            label_person_bbox_labels, num_parallel_calls=tf.data.AUTOTUNE
+            lambda ds_entry: label_person_bbox_labels(ds_entry, cfg=cfg), #pass cfg to function
+            num_parallel_calls=tf.data.AUTOTUNE
         )
     else:
         raise ValueError(
@@ -40,46 +43,49 @@ def open_images_to_vww2(ds_split, count_person_samples, cfg=default_cfg):
     return ds_split
 
 
-def label_person(
-    ds_entry, cfg=default_cfg
+def label_person_image_labels(
+    ds_entry,
 ):
     if tf.reduce_any(
         [
             tf.equal(
-                tf.constant(1208, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(14048, tf.int64), ds_entry["objects"]["label"]
             ),  # Person
             tf.equal(
-                tf.constant(7212, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(20610, tf.int64), ds_entry["objects"]["label"]
             ),  # Woman
-            tf.equal(tf.constant(10693, tf.int64), ds_entry["objects"]["label"]),  # Man
+            tf.equal(tf.constant(11417, tf.int64), ds_entry["objects"]["label"]),  # Man
+            tf.equal(tf.constant(8000, tf.int64), ds_entry["objects"]["label"]),  # Girl
+            tf.equal(tf.constant(2519, tf.int64), ds_entry["objects"]["label"]),  # Boy
             tf.equal(
-                tf.constant(11877, tf.int64), ds_entry["objects"]["label"]
-            ),  # Girl
-            tf.equal(tf.constant(876, tf.int64), ds_entry["objects"]["label"]),  # Boy
+                tf.constant(9270, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human body
             tf.equal(
-                tf.constant(17410, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9274, tf.int64), ds_entry["objects"]["label"]
             ),  # Human face
             tf.equal(
-                tf.constant(9930, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9279, tf.int64), ds_entry["objects"]["label"]
             ),  # Human head
             tf.equal(
-                tf.constant(17112, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9266, tf.int64), ds_entry["objects"]["label"]
             ),  # Human
             tf.equal(
-                tf.constant(6637, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(6713, tf.int64), ds_entry["objects"]["label"]
             ),  # Female person
             tf.equal(
-                tf.constant(12187, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(11395, tf.int64), ds_entry["objects"]["label"]
             ),  # Male person
             tf.equal(
-                tf.constant(19977, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(3895, tf.int64), ds_entry["objects"]["label"]
             ),  # Child
-            tf.equal(tf.constant(5201, tf.int64), ds_entry["objects"]["label"]),  # Lady
             tf.equal(
-                tf.constant(19617, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(10483, tf.int64), ds_entry["objects"]["label"]
+            ),  # Lady
+            tf.equal(
+                tf.constant(139, tf.int64), ds_entry["objects"]["label"]
             ),  # Adolescent
             tf.equal(
-                tf.constant(2873, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(20808, tf.int64), ds_entry["objects"]["label"]
             ),  # Youth
         ]
     ):
@@ -88,37 +94,38 @@ def label_person(
     elif tf.reduce_any(
         [
             tf.equal(
-                tf.constant(5075, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human body
-            tf.equal(
-                tf.constant(311, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9273, tf.int64), ds_entry["objects"]["label"]
             ),  # Human eye
-            tf.equal(tf.constant(483, tf.int64), ds_entry["objects"]["label"]),  # Skull
             tf.equal(
-                tf.constant(4129, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(17150, tf.int64), ds_entry["objects"]["label"]
+            ),  # Skull
+            tf.equal(
+                tf.constant(9282, tf.int64), ds_entry["objects"]["label"]
             ),  # Human mouth
             tf.equal(
-                tf.constant(7172, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9272, tf.int64), ds_entry["objects"]["label"]
             ),  # Human ear
             tf.equal(
-                tf.constant(19450, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9283, tf.int64), ds_entry["objects"]["label"]
             ),  # Human nose
             tf.equal(
-                tf.constant(8309, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9276, tf.int64), ds_entry["objects"]["label"]
             ),  # Human hair
             tf.equal(
-                tf.constant(19486, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9278, tf.int64), ds_entry["objects"]["label"]
             ),  # Human hand
             tf.equal(
-                tf.constant(6750, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9275, tf.int64), ds_entry["objects"]["label"]
             ),  # Human foot
             tf.equal(
-                tf.constant(17415, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9269, tf.int64), ds_entry["objects"]["label"]
             ),  # Human arm
             tf.equal(
-                tf.constant(6966, tf.int64), ds_entry["objects"]["label"]
+                tf.constant(9281, tf.int64), ds_entry["objects"]["label"]
             ),  # Human leg
-            tf.equal(tf.constant(369, tf.int64), ds_entry["objects"]["label"]),  # Beard
+            tf.equal(
+                tf.constant(1661, tf.int64), ds_entry["objects"]["label"]
+            ),  # Beard
         ]
     ):
         ds_entry["person"] = -1
@@ -137,6 +144,7 @@ def label_person_bbox_labels(
             check_bbox_label(ds_entry, 307, cfg=cfg),  # Man
             check_bbox_label(ds_entry, 332, cfg=cfg),  # Girl
             check_bbox_label(ds_entry, 50, cfg=cfg),  # Boy
+            check_bbox_label(ds_entry, 176, cfg=cfg),  # Human body
             check_bbox_label(ds_entry, 501, cfg=cfg),  # Human face
             check_bbox_label(ds_entry, 291, cfg=cfg),  # Human head
         ]
@@ -192,8 +200,6 @@ def label_person_bbox_labels(
     else:
         ds_entry["person"] = 0
     return ds_entry
-
-
 
 # This function checks for the presence of a bounding box object occupying a certain size in the ds_entry. Size can be configured in experiment_config.py.
 def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
@@ -316,7 +322,7 @@ def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
 def get_wake_vision(cfg=default_cfg, batch_size=None):
     batch_size = batch_size or cfg.BATCH_SIZE
     ds = tfds.load(
-        "open_images_v4/200k",
+        "partial_open_images_v7",
         data_dir=cfg.WV_DIR,
         shuffle_files=False,
     )
