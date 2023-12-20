@@ -18,10 +18,12 @@ from experiment_config import default_cfg, get_cfg
 from wake_vision_loader import get_wake_vision
 from vww_loader import get_vww
 
-from pathlib import Path
-import yaml
+import wandb
+from wandb.keras import WandbMetricsLogger
 
 def train(cfg=default_cfg):
+
+    wandb.init(project="wake-vision", config=cfg)
 
     # TODO fix checkpointing
     # with tf.io.gfile.GFile(f'{cfg.CHECKPOINT_DIR}config.yaml', 'w') as fp:
@@ -49,14 +51,14 @@ def train(cfg=default_cfg):
     and the metrics to monitor. Note that with the JAX and TensorFlow backends,
     XLA compilation is turned on by default.
     """
-
-    lr_schedule = keras.optimizers.schedules.ExponentialDecay(
-        cfg.INIT_LR, decay_steps=cfg.DECAY_STEPS, decay_rate=cfg.DECAY_RATE, staircase=False
+    lr_schedule = keras.optimizers.schedules.CosineDecay(
+        cfg.INIT_LR, decay_steps=cfg.DECAY_STEPS, alpha=0.0,
+        warmup_target=cfg.LR, warmup_steps=cfg.WARMUP_STEPS
     )
 
     model.compile(
         loss=keras.losses.SparseCategoricalCrossentropy(),
-        optimizer=keras.optimizers.Adam(learning_rate=lr_schedule),
+        optimizer=keras.optimizers.AdamW(learning_rate=lr_schedule, weight_decay=cfg.WEIGHT_DECAY),
         metrics=[
             keras.metrics.SparseCategoricalAccuracy(name="acc"),
         ],
@@ -73,7 +75,7 @@ def train(cfg=default_cfg):
     #Train for a fixed number of steps, validating every
     model.fit(
         train, epochs=(cfg.STEPS//cfg.VAL_STEPS), steps_per_epoch=cfg.VAL_STEPS, validation_data=val,
-        # callbacks=[model_checkpoint_callback]
+        callbacks=[WandbMetricsLogger()],
     )
     score = model.evaluate(test, verbose=1)
     print(score)
@@ -84,6 +86,7 @@ def train(cfg=default_cfg):
 
 
     #return path to saved model, to be evaluated
+    wandb.finish()
     return cfg.SAVE_FILE
 
 

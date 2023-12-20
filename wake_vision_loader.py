@@ -137,7 +137,9 @@ def label_person_image_labels(
 def label_person_bbox_labels(
     ds_entry, cfg=default_cfg
 ):
-    if tf.reduce_any(
+    if tf.math.equal(tf.size(ds_entry["bobjects"]["label"]), 0):
+        ds_entry["person"] = -1
+    elif tf.reduce_any(
         [
             check_bbox_label(ds_entry, 68, cfg=cfg),  # Person
             check_bbox_label(ds_entry, 227, cfg=cfg),  # Woman

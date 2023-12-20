@@ -52,8 +52,8 @@ def cross_val(wv_model_cfg, vww_model_cfg):
     return cross_val
 
 if __name__ == "__main__":
-    wv_yaml = "gs://wake-vision-storage/saved_models/wv_large2023_12_08-07_36_11_PM/config.yaml"
-    vww_yaml = "gs://wake-vision-storage/saved_models/vww_large2023_12_08-07_36_11_PM/config.yaml"
+    wv_yaml = "gs://wake-vision-storage/saved_models/wv_small2023_12_19-09_52_03_PM/config.yaml"
+    vww_yaml = "gs://wake-vision-storage/saved_models/vww_small2023_12_19-01_02_00_AM/config.yaml"
 
     with tf.io.gfile.GFile(wv_yaml, 'r') as fp:
         wv_cfg = yaml.unsafe_load(fp)

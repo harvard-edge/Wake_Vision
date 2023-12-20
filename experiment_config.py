@@ -34,12 +34,19 @@ def get_cfg(experiment_name=None):
     cfg.MODEL_SIZE = 0.25
 
     #Train Config
-    cfg.STEPS = 10 ** 5
-    cfg.VAL_STEPS = 10 ** 4
+    cfg.STEPS = (10 ** 5)
+    cfg.VAL_STEPS = cfg.STEPS // 20
     cfg.BATCH_SIZE = 128
-    cfg.INIT_LR = 0.0005
-    cfg.DECAY_STEPS = 10 ** 4
-    cfg.DECAY_RATE = 0.98
+
+    #Learning Rate Config
+    cfg.INIT_LR = 0.00001
+    cfg.WARMUP_STEPS = 10 ** 3
+    cfg.LR = 0.001
+    cfg.DECAY_STEPS = cfg.STEPS - cfg.WARMUP_STEPS
+
+    #Weight Decay Config
+    cfg.WEIGHT_DECAY = 0.000004
+
     cfg.SHUFFLE_BUFFER_SIZE = 1024
 
     return cfg
