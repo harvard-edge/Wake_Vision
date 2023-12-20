@@ -34,7 +34,7 @@ def train(cfg=default_cfg):
     else:
         train, val, test = get_wake_vision(cfg)
 
-    model = keras.applications.MobileNet(
+    model = keras.applications.MobileNetV2(
         input_shape=cfg.INPUT_SHAPE,
         alpha=cfg.MODEL_SIZE,
         weights=None,

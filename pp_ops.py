@@ -62,7 +62,7 @@ def cast_images_to_float32(ds_entry):
 
 
 def mobilenet_preprocessing_wrapper(ds_entry):
-    ds_entry["image"] = tf.keras.applications.mobilenet.preprocess_input(
+    ds_entry["image"] = tf.keras.applications.mobilenet_v2.preprocess_input(
         ds_entry["image"]
     )
     return ds_entry
