@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import tensorflow_datasets as tfds
 import os
-import sys
 import csv
 import collections
 import numpy as np
