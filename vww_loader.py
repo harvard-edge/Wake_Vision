@@ -1,11 +1,11 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from experiment_config import cfg
+from experiment_config import default_cfg
 import pp_ops
 
 
-def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
+def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
     #vww has irreglar names for image and label
     ds_split = ds_split.map(pp_ops.vww_rename, num_parallel_calls=tf.data.AUTOTUNE)
 
@@ -18,14 +18,17 @@ def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
         # inception crop
         ds_split = ds_split.map(pp_ops.inception_crop, num_parallel_calls=tf.data.AUTOTUNE)
         # resize
-        ds_split = ds_split.map(pp_ops.resize, num_parallel_calls=tf.data.AUTOTUNE)
+        resize = lambda ds_entry: pp_ops.resize(ds_entry, cfg.INPUT_SHAPE)
+        ds_split = ds_split.map(resize, num_parallel_calls=tf.data.AUTOTUNE)
         # flip
         ds_split = ds_split.map(pp_ops.random_flip_lr, num_parallel_calls=tf.data.AUTOTUNE)
     else:
         # resize small
-        ds_split = ds_split.map(pp_ops.resize_small, num_parallel_calls=tf.data.AUTOTUNE)
+        resize_small = lambda ds_entry: pp_ops.resize_small(ds_entry, cfg.INPUT_SHAPE)
+        ds_split = ds_split.map(resize_small, num_parallel_calls=tf.data.AUTOTUNE)
         # center crop
-        ds_split = ds_split.map(pp_ops.center_crop, num_parallel_calls=tf.data.AUTOTUNE)
+        center_crop = lambda ds_entry: pp_ops.center_crop(ds_entry, cfg.INPUT_SHAPE)
+        ds_split = ds_split.map(center_crop, num_parallel_calls=tf.data.AUTOTUNE)
 
     # Use the official mobilenet preprocessing to normalize images
     ds_split = ds_split.map(
@@ -39,11 +42,12 @@ def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
     return ds_split.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
 
-def get_vww(batch_size=cfg.BATCH_SIZE):
+def get_vww(cfg=default_cfg, batch_size=None):
+    batch_size = batch_size or cfg.BATCH_SIZE
     builder = tfds.builder_from_directory(cfg.VWW_DIR)
 
-    train = preprocessing(builder.as_dataset(split="train[:90%]"), batch_size, train=True)
-    val = preprocessing(builder.as_dataset(split="train[90%:]"), batch_size)
-    test = preprocessing(builder.as_dataset(split="val"), batch_size)
+    train = preprocessing(builder.as_dataset(split="train[:90%]"), batch_size, train=True, cfg=cfg)
+    val = preprocessing(builder.as_dataset(split="train[90%:]"), batch_size, cfg=cfg)
+    test = preprocessing(builder.as_dataset(split="val"), batch_size, cfg=cfg)
 
     return train, val, test

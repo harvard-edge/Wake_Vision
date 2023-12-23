@@ -1,5 +1,5 @@
 import tensorflow as tf
-from experiment_config import cfg
+from experiment_config import default_cfg
 
 
 def inception_crop(ds_entry):
@@ -22,10 +22,10 @@ def inception_crop(ds_entry):
     ds_entry["image"] = crop
     return ds_entry
 
-def resize_small(ds_entry):
+def resize_small(ds_entry, input_shape=default_cfg.INPUT_SHAPE):
     #Resizes the smaller side to `smaller_size` keeping aspect ratio.
     image = ds_entry["image"]
-    smaller_size = cfg.INPUT_SHAPE[0] # Assuming target shape is square
+    smaller_size = input_shape[0] # Assuming target shape is square
 
     h, w = tf.shape(image)[0], tf.shape(image)[1]
 
@@ -41,18 +41,18 @@ def resize_small(ds_entry):
     ds_entry["image"] = tf.cast(image, dtype)
     return ds_entry
 
-def center_crop(ds_entry):
+def center_crop(ds_entry, input_shape=default_cfg.INPUT_SHAPE):
     #crop image to desired size
     image = ds_entry["image"]
-    h, w = cfg.INPUT_SHAPE[0], cfg.INPUT_SHAPE[1]
+    h, w = input_shape[0], input_shape[1]
     dy = (tf.shape(image)[0] - h) // 2
     dx = (tf.shape(image)[1] - w) // 2
     ds_entry["image"] = tf.image.crop_to_bounding_box(image, dy, dx, h, w)
     return ds_entry
 
 
-def resize(ds_entry):
-    ds_entry["image"] = tf.image.resize(ds_entry["image"], cfg.INPUT_SHAPE[:2])
+def resize(ds_entry, input_shape=default_cfg.INPUT_SHAPE):
+    ds_entry["image"] = tf.image.resize(ds_entry["image"], input_shape[:2])
     return ds_entry
 
 
@@ -62,7 +62,7 @@ def cast_images_to_float32(ds_entry):
 
 
 def mobilenet_preprocessing_wrapper(ds_entry):
-    ds_entry["image"] = tf.keras.applications.mobilenet.preprocess_input(
+    ds_entry["image"] = tf.keras.applications.mobilenet_v2.preprocess_input(
         ds_entry["image"]
     )
     return ds_entry

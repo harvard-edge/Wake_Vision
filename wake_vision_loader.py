@@ -1,21 +1,23 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from experiment_config import cfg
+from experiment_config import default_cfg
 import pp_ops
 import partial_open_images_v7.partial_open_images_v7_dataset_builder
 
 
 # A function to convert the "Train", "Validation" and "Test" parts of open images to their respective vww2 variants.
-def open_images_to_vww2(ds_split, count_person_samples):
+def open_images_to_vww2(ds_split, count_person_samples, cfg=default_cfg):
     # Use either the image level labels or bounding box labels (according to configuration) already in the open images dataset to label images as containing a person or no person
     if cfg.LABEL_TYPE == "image":
         ds_split = ds_split.map(
             label_person_image_labels, num_parallel_calls=tf.data.AUTOTUNE
         )
     elif cfg.LABEL_TYPE == "bbox":
+        
         ds_split = ds_split.map(
-            label_person_bbox_labels, num_parallel_calls=tf.data.AUTOTUNE
+            lambda ds_entry: label_person_bbox_labels(ds_entry, cfg=cfg), #pass cfg to function
+            num_parallel_calls=tf.data.AUTOTUNE
         )
     else:
         raise ValueError(
@@ -133,18 +135,20 @@ def label_person_image_labels(
 
 
 def label_person_bbox_labels(
-    ds_entry,
+    ds_entry, cfg=default_cfg
 ):
-    if tf.reduce_any(
+    if tf.math.equal(tf.size(ds_entry["bobjects"]["label"]), 0):
+        ds_entry["person"] = -1
+    elif tf.reduce_any(
         [
-            check_bbox_label(ds_entry, 68),  # Person
-            check_bbox_label(ds_entry, 227),  # Woman
-            check_bbox_label(ds_entry, 307),  # Man
-            check_bbox_label(ds_entry, 332),  # Girl
-            check_bbox_label(ds_entry, 50),  # Boy
-            check_bbox_label(ds_entry, 176),  # Human body
-            check_bbox_label(ds_entry, 501),  # Human face
-            check_bbox_label(ds_entry, 291),  # Human head
+            check_bbox_label(ds_entry, 68, cfg=cfg),  # Person
+            check_bbox_label(ds_entry, 227, cfg=cfg),  # Woman
+            check_bbox_label(ds_entry, 307, cfg=cfg),  # Man
+            check_bbox_label(ds_entry, 332, cfg=cfg),  # Girl
+            check_bbox_label(ds_entry, 50, cfg=cfg),  # Boy
+            check_bbox_label(ds_entry, 176, cfg=cfg),  # Human body
+            check_bbox_label(ds_entry, 501, cfg=cfg),  # Human face
+            check_bbox_label(ds_entry, 291, cfg=cfg),  # Human head
         ]
     ):
         ds_entry["person"] = 1
@@ -199,10 +203,8 @@ def label_person_bbox_labels(
         ds_entry["person"] = 0
     return ds_entry
 
-
-
 # This function checks for the presence of a bounding box object occupying a certain size in the ds_entry. Size can be configured in experiment_config.py.
-def check_bbox_label(ds_entry, label_number):
+def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
 
     return_value = False  # This extra variable is needed as tensorflow does not allow return statements in loops.
     object_present_tensor = tf.equal(
@@ -211,10 +213,20 @@ def check_bbox_label(ds_entry, label_number):
     bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
 
     #crop the bounding box area to the center crop that will happen in preprocessing.
-    image_h = tf.shape(ds_entry["image"])[0]
-    image_w = tf.shape(ds_entry["image"])[1]
+    orig_image_h = tf.shape(ds_entry["image"])[0]
+    orig_image_w = tf.shape(ds_entry["image"])[1]
 
     h, w = cfg.INPUT_SHAPE[0], cfg.INPUT_SHAPE[1]
+
+    small_side = tf.minimum(orig_image_h, orig_image_w)
+    scale =  h / small_side
+    image_h = tf.cast(tf.cast(orig_image_h, tf.float64) * scale, tf.int32)
+    image_w = tf.cast(tf.cast(orig_image_w, tf.float64) * scale, tf.int32)
+
+    image_h = image_h if image_h > h else h
+    image_w = image_w if image_w > w else w
+
+
     dy = (image_h - h) // 2
     dx = (image_w - w) // 2
     crop_x_min = tf.cast(dx / image_w, tf.float32)
@@ -223,15 +235,35 @@ def check_bbox_label(ds_entry, label_number):
     crop_y_max = tf.cast((dy + h) / image_h, tf.float32)
 
     for bounding_box in bounding_boxes:
-        tmp_bb_y_min = ((bounding_box[0] - crop_y_min) if bounding_box[0] > crop_y_min else 0.0)
-        tmp_bb_y_max = ((bounding_box[2] - crop_y_min) if bounding_box[2] < crop_y_max else 1.0)
-        tmp_bb_x_min = ((bounding_box[1] - crop_x_min) if bounding_box[1] > crop_x_min else 0.0)
-        tmp_bb_x_max = ((bounding_box[3] - crop_x_min) if bounding_box[3] < crop_x_max else 1.0)
+        # bbox is complete outside of crop
+        if ((bounding_box[0] > crop_y_max) or 
+            (bounding_box[2] < crop_y_min) or 
+            (bounding_box[1] > crop_x_max) or 
+            (bounding_box[3] < crop_x_min)):
+            continue
+
+        #orig pixel values of bounding box
+        bb_y_min = tf.cast(bounding_box[0] * tf.cast(orig_image_h, tf.float32), tf.int32)
+        bb_x_min = tf.cast(bounding_box[1] * tf.cast(orig_image_w, tf.float32), tf.int32)
+        bb_y_max = tf.cast(bounding_box[2] * tf.cast(orig_image_h, tf.float32), tf.int32)
+        bb_x_max = tf.cast(bounding_box[3] * tf.cast(orig_image_w, tf.float32), tf.int32)
+
+        #rescale to new image size
+        bb_y_min = tf.cast((bb_y_min - dy) / h, tf.float32)
+        bb_x_min = tf.cast((bb_x_min - dx) / w, tf.float32)
+        bb_y_max = tf.cast((bb_y_max - dy) / h, tf.float32)
+        bb_x_max = tf.cast((bb_x_max - dx) / w, tf.float32)
+
+
+        tmp_bb_y_min = bb_y_min if bounding_box[0] > crop_y_min else 0.0
+        tmp_bb_y_max = bb_y_max if bounding_box[2] < crop_y_max else 1.0
+        tmp_bb_x_min = bb_x_min if bounding_box[1] > crop_x_min else 0.0
+        tmp_bb_x_max = bb_x_max if bounding_box[3] < crop_x_max else 1.0
 
         bb_effective_height = tmp_bb_y_max - tmp_bb_y_min
         bb_effective_width = tmp_bb_x_max - tmp_bb_x_min
 
-        if (bb_effective_height * bb_effective_width) > cfg.MIN_BBOX_SIZE and bb_effective_height > 0 and bb_effective_width > 0:
+        if (bb_effective_height * bb_effective_width) > cfg.MIN_BBOX_SIZE:
             return_value = True
     
     return return_value
@@ -245,7 +277,7 @@ def non_person_filter(ds_entry):
     return tf.equal(ds_entry["person"], 0)
 
 
-def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
+def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
     # Convert values from int8 to float32
     ds_split = ds_split.map(
         pp_ops.cast_images_to_float32, num_parallel_calls=tf.data.AUTOTUNE
@@ -259,18 +291,21 @@ def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
             pp_ops.inception_crop, num_parallel_calls=tf.data.AUTOTUNE
         )
         # resize
-        ds_split = ds_split.map(pp_ops.resize, num_parallel_calls=tf.data.AUTOTUNE)
+        resize = lambda ds_entry: pp_ops.resize(ds_entry, cfg.INPUT_SHAPE)
+        ds_split = ds_split.map(resize, num_parallel_calls=tf.data.AUTOTUNE)
         # flip
         ds_split = ds_split.map(
             pp_ops.random_flip_lr, num_parallel_calls=tf.data.AUTOTUNE
         )
     else:
         # resize small
+        resize_small = lambda ds_entry: pp_ops.resize_small(ds_entry, cfg.INPUT_SHAPE)
         ds_split = ds_split.map(
-            pp_ops.resize_small, num_parallel_calls=tf.data.AUTOTUNE
+            resize_small, num_parallel_calls=tf.data.AUTOTUNE
         )
         # center crop
-        ds_split = ds_split.map(pp_ops.center_crop, num_parallel_calls=tf.data.AUTOTUNE)
+        center_crop = lambda ds_entry: pp_ops.center_crop(ds_entry, cfg.INPUT_SHAPE)
+        ds_split = ds_split.map(center_crop, num_parallel_calls=tf.data.AUTOTUNE)
 
     # Use the official mobilenet preprocessing to normalize images
     ds_split = ds_split.map(
@@ -286,21 +321,22 @@ def preprocessing(ds_split, batch_size=cfg.BATCH_SIZE, train=False):
     return ds_split.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
 
-def get_wake_vision(batch_size=cfg.BATCH_SIZE):
+def get_wake_vision(cfg=default_cfg, batch_size=None):
+    batch_size = batch_size or cfg.BATCH_SIZE
     ds = tfds.load(
         "partial_open_images_v7",
         data_dir=cfg.WV_DIR,
         shuffle_files=False,
     )
 
-    ds["train"] = open_images_to_vww2(ds["train"], cfg.COUNT_PERSON_SAMPLES_TRAIN)
+    ds["train"] = open_images_to_vww2(ds["train"], cfg.COUNT_PERSON_SAMPLES_TRAIN, cfg=cfg)
     ds["validation"] = open_images_to_vww2(
-        ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL
+        ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg
     )
-    ds["test"] = open_images_to_vww2(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST)
+    ds["test"] = open_images_to_vww2(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
 
-    train = preprocessing(ds["train"], batch_size, train=True)
-    val = preprocessing(ds["validation"], batch_size)
-    test = preprocessing(ds["test"], batch_size)
+    train = preprocessing(ds["train"], batch_size, train=True, cfg=cfg)
+    val = preprocessing(ds["validation"], batch_size, cfg=cfg)
+    test = preprocessing(ds["test"], batch_size, cfg=cfg)
 
     return train, val, test
