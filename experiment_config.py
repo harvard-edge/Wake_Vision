@@ -24,9 +24,15 @@ def get_cfg(experiment_name=None):
     cfg.SAVE_DIR = f"{cfg.BUCKET_NAME}saved_models/{cfg.EXPERIMENT_NAME}/"
     cfg.SAVE_FILE = cfg.SAVE_DIR + f"{cfg.MODEL_NAME}.keras"
 
-    cfg.COUNT_PERSON_SAMPLES_TRAIN = 844965  # Number of person samples in the WV train dataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
-    cfg.COUNT_PERSON_SAMPLES_VAL = 9973  # There are 31647 non-person samples.
-    cfg.COUNT_PERSON_SAMPLES_TEST = 30226  # There are 95210 non-person samples. The distribution of persons in both the Val and Test set is close to 24% (Val:23.96) (Test:24.09) so we may not need to reduce the size of these.
+
+    #TODO recalculate these numbers
+    if cfg.LABEL_TYPE == "image":
+        cfg.COUNT_PERSON_SAMPLES_TRAIN = 3238953
+        cfg.COUNT_PERSON_SAMPLES_VAL = 19311
+        cfg.COUNT_PERSON_SAMPLES_TEST = 58288
+    cfg.COUNT_PERSON_SAMPLES_TRAIN = 675411#844965  # Number of person samples in the WV train dataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
+    cfg.COUNT_PERSON_SAMPLES_VAL = 9106#9973  # There are 31647 non-person samples.
+    cfg.COUNT_PERSON_SAMPLES_TEST = 27328#30226  # There are 95210 non-person samples. The distribution of persons in both the Val and Test set is close to 24% (Val:23.96) (Test:24.09) so we may not need to reduce the size of these.
 
     # Model Config
     cfg.INPUT_SHAPE = (224, 224, 3)
@@ -34,14 +40,14 @@ def get_cfg(experiment_name=None):
     cfg.MODEL_SIZE = 0.25
 
     #Train Config
-    cfg.STEPS = (10 ** 5)
+    cfg.STEPS = (10 ** 5) *2
     cfg.VAL_STEPS = cfg.STEPS // 20
     cfg.BATCH_SIZE = 128
 
     #Learning Rate Config
     cfg.INIT_LR = 0.00001
     cfg.WARMUP_STEPS = 10 ** 3
-    cfg.LR = 0.001
+    cfg.LR = 0.002
     cfg.DECAY_STEPS = cfg.STEPS - cfg.WARMUP_STEPS
 
     #Weight Decay Config

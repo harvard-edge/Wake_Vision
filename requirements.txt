@@ -1,4 +1,4 @@
-keras_core
+keras
 tensorflow
 tensorflow-datasets
 ml_collections

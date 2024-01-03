@@ -6,10 +6,10 @@ import os
 
 os.environ["KERAS_BACKEND"] = "jax"
 
-# Note that keras_core should only be imported after the backend
+# Note that keras should only be imported after the backend
 # has been configured. The backend cannot be changed once the
 # package is imported.
-import keras_core as keras
+import keras
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -58,7 +58,8 @@ def train(cfg=default_cfg):
 
     model.compile(
         loss=keras.losses.SparseCategoricalCrossentropy(),
-        optimizer=keras.optimizers.AdamW(learning_rate=lr_schedule, weight_decay=cfg.WEIGHT_DECAY),
+        optimizer=keras.optimizers.AdamW(learning_rate=lr_schedule,
+                                          weight_decay=cfg.WEIGHT_DECAY,),
         metrics=[
             keras.metrics.SparseCategoricalAccuracy(name="acc"),
         ],
