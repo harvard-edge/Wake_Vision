@@ -14,10 +14,11 @@ def open_images_to_vww2(ds_split, count_person_samples, cfg=default_cfg):
             label_person_image_labels, num_parallel_calls=tf.data.AUTOTUNE
         )
     elif cfg.LABEL_TYPE == "bbox":
-        
         ds_split = ds_split.map(
-            lambda ds_entry: label_person_bbox_labels(ds_entry, cfg=cfg), #pass cfg to function
-            num_parallel_calls=tf.data.AUTOTUNE
+            lambda ds_entry: label_person_bbox_labels(
+                ds_entry, cfg=cfg
+            ),  # pass cfg to function
+            num_parallel_calls=tf.data.AUTOTUNE,
         )
     else:
         raise ValueError(
@@ -43,89 +44,43 @@ def open_images_to_vww2(ds_split, count_person_samples, cfg=default_cfg):
     return ds_split
 
 
-def label_person_image_labels(
-    ds_entry,
-):
+def label_person_image_labels(ds_entry, cfg=default_cfg):
     if tf.reduce_any(
         [
-            tf.equal(
-                tf.constant(14048, tf.int64), ds_entry["objects"]["label"]
-            ),  # Person
-            tf.equal(
-                tf.constant(20610, tf.int64), ds_entry["objects"]["label"]
-            ),  # Woman
-            tf.equal(tf.constant(11417, tf.int64), ds_entry["objects"]["label"]),  # Man
-            tf.equal(tf.constant(8000, tf.int64), ds_entry["objects"]["label"]),  # Girl
-            tf.equal(tf.constant(2519, tf.int64), ds_entry["objects"]["label"]),  # Boy
-            tf.equal(
-                tf.constant(9270, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human body
-            tf.equal(
-                tf.constant(9274, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human face
-            tf.equal(
-                tf.constant(9279, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human head
-            tf.equal(
-                tf.constant(9266, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human
-            tf.equal(
-                tf.constant(6713, tf.int64), ds_entry["objects"]["label"]
-            ),  # Female person
-            tf.equal(
-                tf.constant(11395, tf.int64), ds_entry["objects"]["label"]
-            ),  # Male person
-            tf.equal(
-                tf.constant(3895, tf.int64), ds_entry["objects"]["label"]
-            ),  # Child
-            tf.equal(
-                tf.constant(10483, tf.int64), ds_entry["objects"]["label"]
-            ),  # Lady
-            tf.equal(
-                tf.constant(139, tf.int64), ds_entry["objects"]["label"]
-            ),  # Adolescent
-            tf.equal(
-                tf.constant(20808, tf.int64), ds_entry["objects"]["label"]
-            ),  # Youth
+            check_image_level_label(ds_entry, 14048, cfg),  # Person
+            check_image_level_label(ds_entry, 20610, cfg),  # Woman
+            check_image_level_label(ds_entry, 11417, cfg),  # Man
+            check_image_level_label(ds_entry, 8000, cfg),  # Girl
+            check_image_level_label(ds_entry, 2519, cfg),  # Boy
+            check_image_level_label(ds_entry, 9270, cfg),  # Human body
+            check_image_level_label(ds_entry, 9274, cfg),  # Human face
+            check_image_level_label(ds_entry, 9279, cfg),  # Human head
+            check_image_level_label(ds_entry, 9266, cfg),  # Human
+            check_image_level_label(ds_entry, 6713, cfg),  # Female person
+            check_image_level_label(ds_entry, 11395, cfg),  # Male person
+            check_image_level_label(ds_entry, 3895, cfg),  # Child
+            check_image_level_label(ds_entry, 10483, cfg),  # Lady
+            check_image_level_label(ds_entry, 11417, cfg),  # Man
+            check_image_level_label(ds_entry, 11417, cfg),  # Man
+            check_image_level_label(ds_entry, 139, cfg),  # Adolescent
+            check_image_level_label(ds_entry, 20808, cfg),  # Youth
         ]
     ):
         ds_entry["person"] = 1
     # Image level labels include some human body parts which is hard to determine whether to label "person". We label them as -1 here so that they get selected by neither the person or the not person filter.
     elif tf.reduce_any(
         [
-            tf.equal(
-                tf.constant(9273, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human eye
-            tf.equal(
-                tf.constant(17150, tf.int64), ds_entry["objects"]["label"]
-            ),  # Skull
-            tf.equal(
-                tf.constant(9282, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human mouth
-            tf.equal(
-                tf.constant(9272, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human ear
-            tf.equal(
-                tf.constant(9283, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human nose
-            tf.equal(
-                tf.constant(9276, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human hair
-            tf.equal(
-                tf.constant(9278, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human hand
-            tf.equal(
-                tf.constant(9275, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human foot
-            tf.equal(
-                tf.constant(9269, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human arm
-            tf.equal(
-                tf.constant(9281, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human leg
-            tf.equal(
-                tf.constant(1661, tf.int64), ds_entry["objects"]["label"]
-            ),  # Beard
+            check_image_level_label(ds_entry, 9273, cfg),  # Human eye
+            check_image_level_label(ds_entry, 17150, cfg),  # Skull
+            check_image_level_label(ds_entry, 9282, cfg),  # Human mouth
+            check_image_level_label(ds_entry, 9272, cfg),  # Human ear
+            check_image_level_label(ds_entry, 9283, cfg),  # Human nose
+            check_image_level_label(ds_entry, 9276, cfg),  # Human hair
+            check_image_level_label(ds_entry, 9278, cfg),  # Human hand
+            check_image_level_label(ds_entry, 9275, cfg),  # Human foot
+            check_image_level_label(ds_entry, 9269, cfg),  # Human arm
+            check_image_level_label(ds_entry, 9281, cfg),  # Human leg
+            check_image_level_label(ds_entry, 1661, cfg),  # Beard
         ]
     ):
         ds_entry["person"] = -1
@@ -134,9 +89,7 @@ def label_person_image_labels(
     return ds_entry
 
 
-def label_person_bbox_labels(
-    ds_entry, cfg=default_cfg
-):
+def label_person_bbox_labels(ds_entry, cfg=default_cfg):
     if tf.math.equal(tf.size(ds_entry["bobjects"]["label"]), 0):
         ds_entry["person"] = -1
     elif tf.reduce_any(
@@ -187,15 +140,22 @@ def label_person_bbox_labels(
                 tf.constant(220, tf.int64), ds_entry["bobjects"]["label"]
             ),  # Human leg
             tf.equal(tf.constant(20, tf.int64), ds_entry["bobjects"]["label"]),  # Beard
-
-            #bb label is present but either too small or not in center crop
-            tf.equal(tf.constant(68, tf.int64), ds_entry["bobjects"]["label"]),  # Person
-            tf.equal(tf.constant(227, tf.int64), ds_entry["bobjects"]["label"]),  # Woman
+            # bb label is present but either too small or not in center crop
+            tf.equal(
+                tf.constant(68, tf.int64), ds_entry["bobjects"]["label"]
+            ),  # Person
+            tf.equal(
+                tf.constant(227, tf.int64), ds_entry["bobjects"]["label"]
+            ),  # Woman
             tf.equal(tf.constant(307, tf.int64), ds_entry["bobjects"]["label"]),  # Man
             tf.equal(tf.constant(332, tf.int64), ds_entry["bobjects"]["label"]),  # Girl
             tf.equal(tf.constant(50, tf.int64), ds_entry["bobjects"]["label"]),  # Boy
-            tf.equal(tf.constant(501, tf.int64), ds_entry["bobjects"]["label"]),  # Human face
-            tf.equal(tf.constant(291, tf.int64), ds_entry["bobjects"]["label"]),  # Human head
+            tf.equal(
+                tf.constant(501, tf.int64), ds_entry["bobjects"]["label"]
+            ),  # Human face
+            tf.equal(
+                tf.constant(291, tf.int64), ds_entry["bobjects"]["label"]
+            ),  # Human head
         ]
     ):
         ds_entry["person"] = -1
@@ -203,29 +163,45 @@ def label_person_bbox_labels(
         ds_entry["person"] = 0
     return ds_entry
 
+
+# This function checks for the presence of an image level label with at least MIN_IMAGE_LEVEL_CONFIDENCE confidence in the ds_entry.
+def check_image_level_label(ds_entry, label_number, cfg=default_cfg):
+    object_present_tensor = tf.equal(
+        tf.constant(label_number, tf.int64), ds_entry["objects"]["label"]
+    )
+    confidence = ds_entry["bobjects"]["bbox"][object_present_tensor]
+
+    confident_object_present_tensor = tf.math.greater_equal(
+        confidence, cfg.MIN_IMAGE_LEVEL_CONFIDENCE
+    )
+
+    # If any of the image level labels with label_number are present with a confidence greater than MIN_IMAGE_LEVEL_CONFIDENCE then return True.
+    return_value = tf.reduce_any(confident_object_present_tensor)
+
+    return return_value
+
+
 # This function checks for the presence of a bounding box object occupying a certain size in the ds_entry. Size can be configured in experiment_config.py.
 def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
-
     return_value = False  # This extra variable is needed as tensorflow does not allow return statements in loops.
     object_present_tensor = tf.equal(
         tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
     )
     bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
 
-    #crop the bounding box area to the center crop that will happen in preprocessing.
+    # crop the bounding box area to the center crop that will happen in preprocessing.
     orig_image_h = tf.shape(ds_entry["image"])[0]
     orig_image_w = tf.shape(ds_entry["image"])[1]
 
     h, w = cfg.INPUT_SHAPE[0], cfg.INPUT_SHAPE[1]
 
     small_side = tf.minimum(orig_image_h, orig_image_w)
-    scale =  h / small_side
+    scale = h / small_side
     image_h = tf.cast(tf.cast(orig_image_h, tf.float64) * scale, tf.int32)
     image_w = tf.cast(tf.cast(orig_image_w, tf.float64) * scale, tf.int32)
 
     image_h = image_h if image_h > h else h
     image_w = image_w if image_w > w else w
-
 
     dy = (image_h - h) // 2
     dx = (image_w - w) // 2
@@ -236,24 +212,33 @@ def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
 
     for bounding_box in bounding_boxes:
         # bbox is complete outside of crop
-        if ((bounding_box[0] > crop_y_max) or 
-            (bounding_box[2] < crop_y_min) or 
-            (bounding_box[1] > crop_x_max) or 
-            (bounding_box[3] < crop_x_min)):
+        if (
+            (bounding_box[0] > crop_y_max)
+            or (bounding_box[2] < crop_y_min)
+            or (bounding_box[1] > crop_x_max)
+            or (bounding_box[3] < crop_x_min)
+        ):
             continue
 
-        #orig pixel values of bounding box
-        bb_y_min = tf.cast(bounding_box[0] * tf.cast(orig_image_h, tf.float32), tf.int32)
-        bb_x_min = tf.cast(bounding_box[1] * tf.cast(orig_image_w, tf.float32), tf.int32)
-        bb_y_max = tf.cast(bounding_box[2] * tf.cast(orig_image_h, tf.float32), tf.int32)
-        bb_x_max = tf.cast(bounding_box[3] * tf.cast(orig_image_w, tf.float32), tf.int32)
+        # orig pixel values of bounding box
+        bb_y_min = tf.cast(
+            bounding_box[0] * tf.cast(orig_image_h, tf.float32), tf.int32
+        )
+        bb_x_min = tf.cast(
+            bounding_box[1] * tf.cast(orig_image_w, tf.float32), tf.int32
+        )
+        bb_y_max = tf.cast(
+            bounding_box[2] * tf.cast(orig_image_h, tf.float32), tf.int32
+        )
+        bb_x_max = tf.cast(
+            bounding_box[3] * tf.cast(orig_image_w, tf.float32), tf.int32
+        )
 
-        #rescale to new image size
+        # rescale to new image size
         bb_y_min = tf.cast((bb_y_min - dy) / h, tf.float32)
         bb_x_min = tf.cast((bb_x_min - dx) / w, tf.float32)
         bb_y_max = tf.cast((bb_y_max - dy) / h, tf.float32)
         bb_x_max = tf.cast((bb_x_max - dx) / w, tf.float32)
-
 
         tmp_bb_y_min = bb_y_min if bounding_box[0] > crop_y_min else 0.0
         tmp_bb_y_max = bb_y_max if bounding_box[2] < crop_y_max else 1.0
@@ -265,7 +250,7 @@ def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
 
         if (bb_effective_height * bb_effective_width) > cfg.MIN_BBOX_SIZE:
             return_value = True
-    
+
     return return_value
 
 
@@ -300,9 +285,7 @@ def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
     else:
         # resize small
         resize_small = lambda ds_entry: pp_ops.resize_small(ds_entry, cfg.INPUT_SHAPE)
-        ds_split = ds_split.map(
-            resize_small, num_parallel_calls=tf.data.AUTOTUNE
-        )
+        ds_split = ds_split.map(resize_small, num_parallel_calls=tf.data.AUTOTUNE)
         # center crop
         center_crop = lambda ds_entry: pp_ops.center_crop(ds_entry, cfg.INPUT_SHAPE)
         ds_split = ds_split.map(center_crop, num_parallel_calls=tf.data.AUTOTUNE)
@@ -329,7 +312,9 @@ def get_wake_vision(cfg=default_cfg, batch_size=None):
         shuffle_files=False,
     )
 
-    ds["train"] = open_images_to_vww2(ds["train"], cfg.COUNT_PERSON_SAMPLES_TRAIN, cfg=cfg)
+    ds["train"] = open_images_to_vww2(
+        ds["train"], cfg.COUNT_PERSON_SAMPLES_TRAIN, cfg=cfg
+    )
     ds["validation"] = open_images_to_vww2(
         ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg
     )
