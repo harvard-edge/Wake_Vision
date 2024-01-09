@@ -140,7 +140,7 @@ def label_person_bbox_labels(ds_entry, cfg=default_cfg):
                 tf.constant(220, tf.int64), ds_entry["bobjects"]["label"]
             ),  # Human leg
             tf.equal(tf.constant(20, tf.int64), ds_entry["bobjects"]["label"]),  # Beard
-            # bb label is present but either too small or not in center crop
+            # bb label is present but either too small, not in center crop or a depiction of a person (e.g. a drawing)
             tf.equal(
                 tf.constant(68, tf.int64), ds_entry["bobjects"]["label"]
             ),  # Person
@@ -187,7 +187,16 @@ def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
     object_present_tensor = tf.equal(
         tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
     )
-    bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
+
+    # Remove the positive values from object_present_tensor that stem from depictions.
+    depiction_tensor = tf.equal(
+        tf.constant(0, tf.int64), ds_entry["bobjects"]["is_depiction"]
+    )
+    non_depiction_object_present_tensor = tf.logical_and(
+        object_present_tensor, depiction_tensor
+    )
+
+    bounding_boxes = ds_entry["bobjects"]["bbox"][non_depiction_object_present_tensor]
 
     # crop the bounding box area to the center crop that will happen in preprocessing.
     orig_image_h = tf.shape(ds_entry["image"])[0]
