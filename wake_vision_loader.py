@@ -4,10 +4,11 @@ import tensorflow_datasets as tfds
 from experiment_config import default_cfg
 import pp_ops
 import partial_open_images_v7.partial_open_images_v7_dataset_builder
+import finer_grained_evaluation_filters as fgef
 
 
-# A function to convert the "Train", "Validation" and "Test" parts of open images to their respective vww2 variants.
-def open_images_to_vww2(ds_split, count_person_samples, cfg=default_cfg):
+# A function to convert the "Train", "Validation" and "Test" parts of open images to their respective wake vision variants.
+def open_images_to_wv(ds_split, count_person_samples, cfg=default_cfg):
     # Use either the image level labels or bounding box labels (according to configuration) already in the open images dataset to label images as containing a person or no person
     if cfg.LABEL_TYPE == "image":
         ds_split = ds_split.map(
@@ -312,16 +313,59 @@ def get_wake_vision(cfg=default_cfg, batch_size=None):
         shuffle_files=False,
     )
 
-    ds["train"] = open_images_to_vww2(
+    ds["train"] = open_images_to_wv(
         ds["train"], cfg.COUNT_PERSON_SAMPLES_TRAIN, cfg=cfg
     )
-    ds["validation"] = open_images_to_vww2(
+    ds["validation"] = open_images_to_wv(
         ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg
     )
-    ds["test"] = open_images_to_vww2(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
+    ds["test"] = open_images_to_wv(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
 
     train = preprocessing(ds["train"], batch_size, train=True, cfg=cfg)
     val = preprocessing(ds["validation"], batch_size, cfg=cfg)
     test = preprocessing(ds["test"], batch_size, cfg=cfg)
 
     return train, val, test
+
+
+def get_miaps(cfg=default_cfg, batch_size=None):
+    batch_size = batch_size or cfg.BATCH_SIZE
+    ds = tfds.load(
+        "partial_open_images_v7",
+        data_dir=cfg.WV_DIR,
+        shuffle_files=False,
+        split=["validation", "test"],
+    )
+    vw_validation = open_images_to_wv(ds[0], cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg)
+    vw_test = open_images_to_wv(ds[1], cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
+
+    # Create finer grained evaluation sets before preprocessing the dataset
+    # Validation
+    miaps_validation = {
+        "female": fgef.get_predominantly_female_set(vw_validation),
+        "male": fgef.get_predominantly_male_set(vw_validation),
+        "gender_unknown": fgef.get_unknown_gender_set(vw_validation),
+        "young": fgef.get_young_set(vw_validation),
+        "middle": fgef.get_middle_set(vw_validation),
+        "older": fgef.get_older_set(vw_validation),
+        "age_unknown": fgef.get_unknown_age_set(vw_validation),
+    }
+
+    # Test
+    miaps_test = {
+        "female": fgef.get_predominantly_female_set(vw_test),
+        "male": fgef.get_predominantly_male_set(vw_test),
+        "gender_unknown": fgef.get_unknown_gender_set(vw_test),
+        "young": fgef.get_young_set(vw_test),
+        "middle": fgef.get_middle_set(vw_test),
+        "older": fgef.get_older_set(vw_test),
+        "age_unknown": fgef.get_unknown_age_set(vw_test),
+    }
+
+    for key, value in miaps_validation.items():
+        miaps_validation[key] = preprocessing(value, batch_size, cfg=cfg)
+
+    for key, value in miaps_test.items():
+        miaps_test[key] = preprocessing(value, batch_size, cfg=cfg)
+
+    return miaps_validation, miaps_test
