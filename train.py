@@ -21,7 +21,7 @@ from vww_loader import get_vww
 import wandb
 from wandb.keras import WandbMetricsLogger
 
-def train(cfg=default_cfg):
+def train(cfg=default_cfg, distance_eval=False):
 
     wandb.init(project="wake-vision", config=cfg)
 
@@ -72,11 +72,32 @@ def train(cfg=default_cfg):
     #     monitor='val_acc',
     #     mode='max',
     #     save_best_only=True)
+    callbacks = [WandbMetricsLogger()]
+
+    #Distance Eval on each epoch
+    if distance_eval:
+        from wake_vision_loader import get_distance_eval
+        class DistanceEvalCallback(tf.keras.callbacks.Callback):
+            def on_epoch_end(self, epoch, logs=None):
+                distance_ds = get_distance_eval(cfg)
+
+                near_score = self.model.evaluate(distance_ds["near"], verbose=1)
+                mid_score = self.model.evaluate(distance_ds["mid"], verbose=1)
+                far_score = self.model.evaluate(distance_ds["far"], verbose=1)
+                no_person_score = self.model.evaluate(distance_ds["no_person"], verbose=1)
+                result = ("Distace Eval Results:"
+                    f"\n\tNear: {near_score[1]}"
+                    f"\n\tMid: {mid_score[1]}"
+                    f"\n\tFar: {far_score[1]}"
+                    f"\n\tNo Person: {no_person_score[1]}")
+                print(result)
+        
+        callbacks.append(DistanceEvalCallback())
 
     #Train for a fixed number of steps, validating every
     model.fit(
         train, epochs=(cfg.STEPS//cfg.VAL_STEPS), steps_per_epoch=cfg.VAL_STEPS, validation_data=val,
-        callbacks=[WandbMetricsLogger()],
+        callbacks=callbacks,
     )
     score = model.evaluate(test, verbose=1)
     print(score)

@@ -16,7 +16,7 @@ import tensorflow_datasets as tfds
 
 from wake_vision_loader import get_distance_eval
 
-def cross_val(model_cfg):
+def distance_val(model_cfg):
     model_path = model_cfg.SAVE_FILE
     print("Loading Model:"
           f"{model_path}")
@@ -51,4 +51,4 @@ if __name__ == "__main__":
         model_cfg = yaml.unsafe_load(fp)
         model_cfg = config_dict.ConfigDict(model_cfg)
 
-    cross_val(model_cfg)
+    distance_val(model_cfg)
