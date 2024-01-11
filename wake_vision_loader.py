@@ -4,6 +4,7 @@ import tensorflow_datasets as tfds
 from experiment_config import default_cfg
 import pp_ops
 import partial_open_images_v7.partial_open_images_v7_dataset_builder
+import finer_grained_lighting_filters as lighting_filters
 
 
 # A function to convert the "Train", "Validation" and "Test" parts of open images to their respective vww2 variants.
@@ -334,3 +335,38 @@ def get_wake_vision(cfg=default_cfg, batch_size=None):
     test = preprocessing(ds["test"], batch_size, cfg=cfg)
 
     return train, val, test
+
+
+def get_lighting(cfg=default_cfg, batch_size=None):
+    batch_size = batch_size or cfg.BATCH_SIZE
+    oiv7_validation, oiv7_test = tfds.load(
+        "partial_open_images_v7",
+        data_dir=cfg.WV_DIR,
+        shuffle_files=False,
+        split=["validation", "test"],
+    )
+
+    wv_validation = open_images_to_vww2(
+        oiv7_validation, cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg
+    )
+    wv_test = open_images_to_vww2(oiv7_test, cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
+
+    lighting_validation = {
+        "low_light": lighting_filters.get_low_lighting(wv_validation),
+        "medium_light": lighting_filters.get_medium_lighting(wv_validation),
+        "high_light": lighting_filters.get_high_lighting(wv_validation),
+    }
+
+    lighting_test = {
+        "low_light": lighting_filters.get_low_lighting(wv_test),
+        "medium_light": lighting_filters.get_medium_lighting(wv_test),
+        "high_light": lighting_filters.get_high_lighting(wv_test),
+    }
+
+    for key, value in lighting_validation.items():
+        lighting_validation[key] = preprocessing(value, batch_size, cfg=cfg)
+
+    for key, value in lighting_test.items():
+        lighting_test[key] = preprocessing(value, batch_size, cfg=cfg)
+
+    return lighting_validation, lighting_test
