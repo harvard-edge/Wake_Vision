@@ -4,20 +4,22 @@ import tensorflow_datasets as tfds
 from experiment_config import default_cfg
 import pp_ops
 import partial_open_images_v7.partial_open_images_v7_dataset_builder
+import finer_grained_evaluation_filters as fgef
 
 
-# A function to convert the "Train", "Validation" and "Test" parts of open images to their respective vww2 variants.
-def open_images_to_vww2(ds_split, count_person_samples, cfg=default_cfg):
+# A function to convert the "Train", "Validation" and "Test" parts of open images to their respective wake vision variants.
+def open_images_to_wv(ds_split, count_person_samples, cfg=default_cfg):
     # Use either the image level labels or bounding box labels (according to configuration) already in the open images dataset to label images as containing a person or no person
     if cfg.LABEL_TYPE == "image":
         ds_split = ds_split.map(
             label_person_image_labels, num_parallel_calls=tf.data.AUTOTUNE
         )
     elif cfg.LABEL_TYPE == "bbox":
-        
         ds_split = ds_split.map(
-            lambda ds_entry: label_person_bbox_labels(ds_entry, cfg=cfg), #pass cfg to function
-            num_parallel_calls=tf.data.AUTOTUNE
+            lambda ds_entry: label_person_bbox_labels(
+                ds_entry, cfg=cfg
+            ),  # pass cfg to function
+            num_parallel_calls=tf.data.AUTOTUNE,
         )
     else:
         raise ValueError(
@@ -134,9 +136,7 @@ def label_person_image_labels(
     return ds_entry
 
 
-def label_person_bbox_labels(
-    ds_entry, cfg=default_cfg
-):
+def label_person_bbox_labels(ds_entry, cfg=default_cfg):
     if tf.math.equal(tf.size(ds_entry["bobjects"]["label"]), 0):
         ds_entry["person"] = -1
     elif tf.reduce_any(
@@ -187,15 +187,22 @@ def label_person_bbox_labels(
                 tf.constant(220, tf.int64), ds_entry["bobjects"]["label"]
             ),  # Human leg
             tf.equal(tf.constant(20, tf.int64), ds_entry["bobjects"]["label"]),  # Beard
-
-            #bb label is present but either too small or not in center crop
-            tf.equal(tf.constant(68, tf.int64), ds_entry["bobjects"]["label"]),  # Person
-            tf.equal(tf.constant(227, tf.int64), ds_entry["bobjects"]["label"]),  # Woman
+            # bb label is present but either too small or not in center crop
+            tf.equal(
+                tf.constant(68, tf.int64), ds_entry["bobjects"]["label"]
+            ),  # Person
+            tf.equal(
+                tf.constant(227, tf.int64), ds_entry["bobjects"]["label"]
+            ),  # Woman
             tf.equal(tf.constant(307, tf.int64), ds_entry["bobjects"]["label"]),  # Man
             tf.equal(tf.constant(332, tf.int64), ds_entry["bobjects"]["label"]),  # Girl
             tf.equal(tf.constant(50, tf.int64), ds_entry["bobjects"]["label"]),  # Boy
-            tf.equal(tf.constant(501, tf.int64), ds_entry["bobjects"]["label"]),  # Human face
-            tf.equal(tf.constant(291, tf.int64), ds_entry["bobjects"]["label"]),  # Human head
+            tf.equal(
+                tf.constant(501, tf.int64), ds_entry["bobjects"]["label"]
+            ),  # Human face
+            tf.equal(
+                tf.constant(291, tf.int64), ds_entry["bobjects"]["label"]
+            ),  # Human head
         ]
     ):
         ds_entry["person"] = -1
@@ -203,29 +210,28 @@ def label_person_bbox_labels(
         ds_entry["person"] = 0
     return ds_entry
 
+
 # This function checks for the presence of a bounding box object occupying a certain size in the ds_entry. Size can be configured in experiment_config.py.
 def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
-
     return_value = False  # This extra variable is needed as tensorflow does not allow return statements in loops.
     object_present_tensor = tf.equal(
         tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
     )
     bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
 
-    #crop the bounding box area to the center crop that will happen in preprocessing.
+    # crop the bounding box area to the center crop that will happen in preprocessing.
     orig_image_h = tf.shape(ds_entry["image"])[0]
     orig_image_w = tf.shape(ds_entry["image"])[1]
 
     h, w = cfg.INPUT_SHAPE[0], cfg.INPUT_SHAPE[1]
 
     small_side = tf.minimum(orig_image_h, orig_image_w)
-    scale =  h / small_side
+    scale = h / small_side
     image_h = tf.cast(tf.cast(orig_image_h, tf.float64) * scale, tf.int32)
     image_w = tf.cast(tf.cast(orig_image_w, tf.float64) * scale, tf.int32)
 
     image_h = image_h if image_h > h else h
     image_w = image_w if image_w > w else w
-
 
     dy = (image_h - h) // 2
     dx = (image_w - w) // 2
@@ -236,24 +242,33 @@ def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
 
     for bounding_box in bounding_boxes:
         # bbox is complete outside of crop
-        if ((bounding_box[0] > crop_y_max) or 
-            (bounding_box[2] < crop_y_min) or 
-            (bounding_box[1] > crop_x_max) or 
-            (bounding_box[3] < crop_x_min)):
+        if (
+            (bounding_box[0] > crop_y_max)
+            or (bounding_box[2] < crop_y_min)
+            or (bounding_box[1] > crop_x_max)
+            or (bounding_box[3] < crop_x_min)
+        ):
             continue
 
-        #orig pixel values of bounding box
-        bb_y_min = tf.cast(bounding_box[0] * tf.cast(orig_image_h, tf.float32), tf.int32)
-        bb_x_min = tf.cast(bounding_box[1] * tf.cast(orig_image_w, tf.float32), tf.int32)
-        bb_y_max = tf.cast(bounding_box[2] * tf.cast(orig_image_h, tf.float32), tf.int32)
-        bb_x_max = tf.cast(bounding_box[3] * tf.cast(orig_image_w, tf.float32), tf.int32)
+        # orig pixel values of bounding box
+        bb_y_min = tf.cast(
+            bounding_box[0] * tf.cast(orig_image_h, tf.float32), tf.int32
+        )
+        bb_x_min = tf.cast(
+            bounding_box[1] * tf.cast(orig_image_w, tf.float32), tf.int32
+        )
+        bb_y_max = tf.cast(
+            bounding_box[2] * tf.cast(orig_image_h, tf.float32), tf.int32
+        )
+        bb_x_max = tf.cast(
+            bounding_box[3] * tf.cast(orig_image_w, tf.float32), tf.int32
+        )
 
-        #rescale to new image size
+        # rescale to new image size
         bb_y_min = tf.cast((bb_y_min - dy) / h, tf.float32)
         bb_x_min = tf.cast((bb_x_min - dx) / w, tf.float32)
         bb_y_max = tf.cast((bb_y_max - dy) / h, tf.float32)
         bb_x_max = tf.cast((bb_x_max - dx) / w, tf.float32)
-
 
         tmp_bb_y_min = bb_y_min if bounding_box[0] > crop_y_min else 0.0
         tmp_bb_y_max = bb_y_max if bounding_box[2] < crop_y_max else 1.0
@@ -265,7 +280,7 @@ def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
 
         if (bb_effective_height * bb_effective_width) > cfg.MIN_BBOX_SIZE:
             return_value = True
-    
+
     return return_value
 
 
@@ -300,9 +315,7 @@ def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
     else:
         # resize small
         resize_small = lambda ds_entry: pp_ops.resize_small(ds_entry, cfg.INPUT_SHAPE)
-        ds_split = ds_split.map(
-            resize_small, num_parallel_calls=tf.data.AUTOTUNE
-        )
+        ds_split = ds_split.map(resize_small, num_parallel_calls=tf.data.AUTOTUNE)
         # center crop
         center_crop = lambda ds_entry: pp_ops.center_crop(ds_entry, cfg.INPUT_SHAPE)
         ds_split = ds_split.map(center_crop, num_parallel_calls=tf.data.AUTOTUNE)
@@ -329,14 +342,59 @@ def get_wake_vision(cfg=default_cfg, batch_size=None):
         shuffle_files=False,
     )
 
-    ds["train"] = open_images_to_vww2(ds["train"], cfg.COUNT_PERSON_SAMPLES_TRAIN, cfg=cfg)
-    ds["validation"] = open_images_to_vww2(
+    ds["train"] = open_images_to_wv(
+        ds["train"], cfg.COUNT_PERSON_SAMPLES_TRAIN, cfg=cfg
+    )
+    ds["validation"] = open_images_to_wv(
         ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg
     )
-    ds["test"] = open_images_to_vww2(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
+    ds["test"] = open_images_to_wv(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
 
     train = preprocessing(ds["train"], batch_size, train=True, cfg=cfg)
     val = preprocessing(ds["validation"], batch_size, cfg=cfg)
     test = preprocessing(ds["test"], batch_size, cfg=cfg)
 
     return train, val, test
+
+
+def get_miaps(cfg=default_cfg, batch_size=None):
+    batch_size = batch_size or cfg.BATCH_SIZE
+    ds = tfds.load(
+        "partial_open_images_v7",
+        data_dir=cfg.WV_DIR,
+        shuffle_files=False,
+        split=["validation", "test"],
+    )
+    vw_validation = open_images_to_wv(ds[0], cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg)
+    vw_test = open_images_to_wv(ds[1], cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
+
+    # Create finer grained evaluation sets before preprocessing the dataset
+    # Validation
+    miaps_validation = {
+        "female": fgef.get_predominantly_female_set(vw_validation),
+        "male": fgef.get_predominantly_male_set(vw_validation),
+        "gender_unknown": fgef.get_unknown_gender_set(vw_validation),
+        "young": fgef.get_young_set(vw_validation),
+        "middle": fgef.get_middle_set(vw_validation),
+        "older": fgef.get_older_set(vw_validation),
+        "age_unknown": fgef.get_unknown_age_set(vw_validation),
+    }
+
+    # Test
+    miaps_test = {
+        "female": fgef.get_predominantly_female_set(vw_test),
+        "male": fgef.get_predominantly_male_set(vw_test),
+        "gender_unknown": fgef.get_unknown_gender_set(vw_test),
+        "young": fgef.get_young_set(vw_test),
+        "middle": fgef.get_middle_set(vw_test),
+        "older": fgef.get_older_set(vw_test),
+        "age_unknown": fgef.get_unknown_age_set(vw_test),
+    }
+
+    for key, value in miaps_validation.items():
+        miaps_validation[key] = preprocessing(value, batch_size, cfg=cfg)
+
+    for key, value in miaps_test.items():
+        miaps_test[key] = preprocessing(value, batch_size, cfg=cfg)
+
+    return miaps_validation, miaps_test
