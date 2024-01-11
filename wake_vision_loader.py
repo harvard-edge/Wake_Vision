@@ -190,7 +190,7 @@ def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
 
     # Remove the positive values from object_present_tensor that stem from depictions.
     depiction_tensor = tf.equal(
-        tf.constant(0, tf.int64), ds_entry["bobjects"]["is_depiction"]
+        tf.constant(0, tf.int8), ds_entry["bobjects"]["is_depiction"]
     )
     non_depiction_object_present_tensor = tf.logical_and(
         object_present_tensor, depiction_tensor
