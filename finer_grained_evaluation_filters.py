@@ -2,11 +2,20 @@ import tensorflow as tf
 
 # MIAP Filters
 
+# Check person and that there are no other classes
+
 
 def get_miap_set(ds, miap_subset: str, miap_subset_category: str):
     return ds.filter(
-        lambda x: tf.reduce_any(tf.equal(x["miaps"][miap_subset], miap_subset_category))
-        and tf.math.not_equal(tf.size(x["miaps"][miap_subset]), 0)
+        lambda x: tf.reduce_all(
+            tf.equal(x["miaps"][miap_subset], miap_subset_category)
+        )  # Check the desired MIAP label is present in all MIAP boxes
+        and tf.math.not_equal(
+            tf.size(x["miaps"][miap_subset]), 0
+        )  # Check that MIAP labels exist for this image
+        and tf.equal(
+            x["person"], 1
+        )  # Check that there is a person in the centre crop of the image
     )
 
 
