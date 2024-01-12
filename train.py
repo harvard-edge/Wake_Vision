@@ -9,7 +9,7 @@ os.environ["KERAS_BACKEND"] = "jax"
 # Note that keras_core should only be imported after the backend
 # has been configured. The backend cannot be changed once the
 # package is imported.
-import keras_core as keras
+import keras
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -23,7 +23,7 @@ from wandb.keras import WandbMetricsLogger
 
 
 def train(cfg=default_cfg):
-    wandb.init(project="wake-vision", config=cfg)
+    wandb.init(entity="harvard-edge", project="wake-vision", config=cfg)
 
     # TODO fix checkpointing
     # with tf.io.gfile.GFile(f'{cfg.CHECKPOINT_DIR}config.yaml', 'w') as fp:
