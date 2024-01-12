@@ -1,10 +1,7 @@
 import tensorflow as tf
 
+
 # MIAP Filters
-
-# Check person and that there are no other classes
-
-
 def get_miap_set(ds, miap_subset: str, miap_subset_category: str):
     return ds.filter(
         lambda x: tf.reduce_all(
@@ -52,9 +49,9 @@ def get_unknown_age_set(ds):
 
 
 # Lighting filters
-def get_image_lighting(image):
+def get_image_lighting(ds_sample):
     # First convert the image to greyscale
-    greyscale_image = tf.image.rgb_to_grayscale(image)
+    greyscale_image = tf.image.rgb_to_grayscale(ds_sample["image"])
 
     # Return the average pixel value of the new greyscale image
     return tf.reduce_mean(greyscale_image)
