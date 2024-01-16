@@ -61,14 +61,9 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
 
     model.compile(
         loss=keras.losses.SparseCategoricalCrossentropy(),
-<<<<<<< HEAD
         optimizer=keras.optimizers.AdamW(
             learning_rate=lr_schedule, weight_decay=cfg.WEIGHT_DECAY
         ),
-=======
-        optimizer=keras.optimizers.AdamW(learning_rate=lr_schedule,
-                                          weight_decay=cfg.WEIGHT_DECAY,),
->>>>>>> 888c9eb84e58d178d2bed03c4e7d7e78616e79b8
         metrics=[
             keras.metrics.SparseCategoricalAccuracy(name="acc"),
         ],
