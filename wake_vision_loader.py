@@ -413,12 +413,12 @@ def filter_bb_area(ds_entry, min_area, max_area, cfg=default_cfg):
 
 
 
-def get_distance_eval(cfg=default_cfg):
+def get_distance_eval(cfg=default_cfg, split="test"):
     ds_test = tfds.load(
         "partial_open_images_v7",
         data_dir=cfg.WV_DIR,
         shuffle_files=False,
-        split="test",
+        split=split,
     )
 
     ds_test = open_images_to_vww2(ds_test, cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
