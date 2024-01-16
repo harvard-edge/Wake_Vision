@@ -22,7 +22,7 @@ import wandb
 from wandb.keras import WandbMetricsLogger
 
 
-def train(cfg=default_cfg):
+def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
     wandb.init(project="wake-vision", config=cfg)
 
     # TODO fix checkpointing
@@ -33,11 +33,6 @@ def train(cfg=default_cfg):
         train, val, test = get_vww(cfg)
     else:
         train, val, test = get_wake_vision(cfg)
-        miaps_validation, miaps_test = get_miaps(cfg)
-
-    # Collect all finer grained validation and test sets into a single dictionary
-    fine_grained_validation = miaps_validation
-    fine_grained_test = miaps_test
 
     model = keras.applications.MobileNetV2(
         input_shape=cfg.INPUT_SHAPE,
@@ -65,15 +60,6 @@ def train(cfg=default_cfg):
         warmup_steps=cfg.WARMUP_STEPS,
     )
 
-    # Set up a callback class to be able to evaluate multiple validation sets during training.
-    class MultiValidationSetCallback(keras.callbacks.Callback):
-        def on_epoch_end(self, epoch, logs=None):
-            print("\n Finer grained validation set performance:")
-            print(f"Results list contains {self.model.metrics_names}")
-            for name, value in fine_grained_validation.items():
-                results = self.model.evaluate(value, verbose=0)
-                print(f"Validation performance on {name}: {results}")
-
     model.compile(
         loss=keras.losses.SparseCategoricalCrossentropy(),
         optimizer=keras.optimizers.AdamW(
@@ -91,14 +77,45 @@ def train(cfg=default_cfg):
     #     monitor='val_acc',
     #     mode='max',
     #     save_best_only=True)
+    callbacks = [WandbMetricsLogger()]
+
+    #Distance Eval on each epoch
+    if "distance_eval" in extra_evals:
+        from wake_vision_loader import get_distance_eval
+        class DistanceEvalCallback(tf.keras.callbacks.Callback):
+            def on_epoch_end(self, epoch, logs=None):
+                distance_ds = get_distance_eval(cfg)
+
+                near_score = self.model.evaluate(distance_ds["near"], verbose=1)
+                mid_score = self.model.evaluate(distance_ds["mid"], verbose=1)
+                far_score = self.model.evaluate(distance_ds["far"], verbose=1)
+                no_person_score = self.model.evaluate(distance_ds["no_person"], verbose=1)
+                result = ("Distace Eval Results:"
+                    f"\n\tNear: {near_score[1]}"
+                    f"\n\tMid: {mid_score[1]}"
+                    f"\n\tFar: {far_score[1]}"
+                    f"\n\tNo Person: {no_person_score[1]}")
+                print(result)
+        
+        callbacks.append(DistanceEvalCallback())
+    elif "miap" in extra_evals:
+            # Set up a callback class to be able to evaluate multiple validation sets during training.
+        class MIAPEvalCallback(keras.callbacks.Callback):
+            def on_epoch_end(self, epoch, logs=None):
+                miaps_validation = get_miaps(cfg, split="validation")
+                print("\n Finer grained validation set performance:")
+                print(f"Results list contains {self.model.metrics_names}")
+                for name, value in miaps_validation.items():
+                    results = self.model.evaluate(value, verbose=0)
+                    print(f"Validation performance on {name}: {results}")
+        
+        callbacks.append(MIAPEvalCallback())
+    
 
     # Train for a fixed number of steps, validating every
     model.fit(
-        train,
-        epochs=(cfg.STEPS // cfg.VAL_STEPS),
-        steps_per_epoch=cfg.VAL_STEPS,
-        validation_data=val,
-        callbacks=[WandbMetricsLogger(), MultiValidationSetCallback()],
+        train, epochs=(cfg.STEPS//cfg.VAL_STEPS), steps_per_epoch=cfg.VAL_STEPS, validation_data=val,
+        callbacks=callbacks,
     )
     score = model.evaluate(test, verbose=1)
     print(score)
