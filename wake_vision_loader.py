@@ -378,3 +378,26 @@ def get_miaps(cfg=default_cfg, batch_size=None):
         miaps_test[key] = preprocessing(value, batch_size, cfg=cfg)
 
     return miaps_validation, miaps_test
+
+
+#Distance Eval
+def get_distance_eval(cfg=default_cfg):
+    ds_test = tfds.load(
+        "partial_open_images_v7",
+        data_dir=cfg.WV_DIR,
+        shuffle_files=False,
+        split="test",
+    )
+
+    ds_test = open_images_to_wv(ds_test, cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
+    no_person = ds_test.filter(lambda ds_entry: non_person_filter(ds_entry))
+    far = ds_test.filter(lambda ds_entry: fgef.filter_bb_area(ds_entry, cfg.MIN_BBOX_SIZE, 0.1))#cfg.NEAR_BB_AREA))
+    mid = ds_test.filter(lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.1, 0.3))#cfg.MID_BB_AREA))
+    near = ds_test.filter(lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.3, 1.0))#cfg.FAR_BB_AREA))
+
+    no_person = preprocessing(no_person, 1, cfg=cfg)
+    far = preprocessing(far, 1, cfg=cfg)
+    mid = preprocessing(mid, 1, cfg=cfg)
+    near = preprocessing(near, 1, cfg=cfg)
+
+    return {"far": far, "mid": mid, "near": near, "no_person": no_person}
