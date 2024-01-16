@@ -21,6 +21,7 @@ from vww_loader import get_vww
 import wandb
 from wandb.keras import WandbMetricsLogger
 
+def train(cfg=default_cfg, distance_eval=False):
 
 def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
     wandb.init(project="wake-vision", config=cfg)
@@ -83,19 +84,18 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
     if "distance_eval" in extra_evals:
         from wake_vision_loader import get_distance_eval
         class DistanceEvalCallback(tf.keras.callbacks.Callback):
-            def on_epoch_end(self, epoch, logs=None):
-                distance_ds = get_distance_eval(cfg)
+                
 
-                near_score = self.model.evaluate(distance_ds["near"], verbose=1)
-                mid_score = self.model.evaluate(distance_ds["mid"], verbose=1)
-                far_score = self.model.evaluate(distance_ds["far"], verbose=1)
-                no_person_score = self.model.evaluate(distance_ds["no_person"], verbose=1)
-                result = ("Distace Eval Results:"
-                    f"\n\tNear: {near_score[1]}"
-                    f"\n\tMid: {mid_score[1]}"
-                    f"\n\tFar: {far_score[1]}"
-                    f"\n\tNo Person: {no_person_score[1]}")
-                print(result)
+            def on_epoch_end(self, epoch, logs=None):
+                distance_ds = get_distance_eval(cfg, split="validation")
+                results = {}
+                results["Dist-near"] = self.model.evaluate(distance_ds["near"], verbose=1)[1]
+                results["Dist-mid"] = self.model.evaluate(distance_ds["mid"], verbose=1)[1]
+                results["Dist-far"] = self.model.evaluate(distance_ds["far"], verbose=1)[1]
+                results["Dist-no-person"] = self.model.evaluate(distance_ds["no_person"], verbose=1)[1]
+                print("Distace Eval Results:")
+                print(results)
+                wandb.log({f"epoch/{k}": v for k, v in results.items()})
         
         callbacks.append(DistanceEvalCallback())
     elif "miap" in extra_evals:
@@ -119,11 +119,6 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
     )
     score = model.evaluate(test, verbose=1)
     print(score)
-
-    # Print Scores for finer grained test sets
-    for name, value in fine_grained_test.items():
-        results = model.evaluate(value, verbose=0)
-        print(f"Test performance on {name}: {results}")
 
     model.save(cfg.SAVE_FILE)
     with tf.io.gfile.GFile(f"{cfg.SAVE_DIR}config.yaml", "w") as fp:

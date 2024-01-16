@@ -381,12 +381,12 @@ def get_miaps(cfg=default_cfg, batch_size=None):
 
 
 #Distance Eval
-def get_distance_eval(cfg=default_cfg):
+def get_distance_eval(cfg=default_cfg, split="test"):
     ds_test = tfds.load(
         "partial_open_images_v7",
         data_dir=cfg.WV_DIR,
         shuffle_files=False,
-        split="test",
+        split=split,
     )
 
     ds_test = open_images_to_wv(ds_test, cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
