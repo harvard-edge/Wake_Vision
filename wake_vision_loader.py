@@ -337,47 +337,39 @@ def get_wake_vision(cfg=default_cfg, batch_size=None):
     return train, val, test
 
 
-def get_miaps(cfg=default_cfg, batch_size=None):
+def get_miaps(cfg=default_cfg, batch_size=None, split="test"):
     batch_size = batch_size or cfg.BATCH_SIZE
     ds = tfds.load(
         "partial_open_images_v7",
         data_dir=cfg.WV_DIR,
         shuffle_files=False,
-        split=["validation", "test"],
+        split=split,
     )
-    vw_validation = open_images_to_wv(ds[0], cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg)
-    vw_test = open_images_to_wv(ds[1], cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
 
-    # Create finer grained evaluation sets before preprocessing the dataset
-    # Validation
-    miaps_validation = {
-        "female": fgef.get_predominantly_female_set(vw_validation),
-        "male": fgef.get_predominantly_male_set(vw_validation),
-        "gender_unknown": fgef.get_unknown_gender_set(vw_validation),
-        "young": fgef.get_young_set(vw_validation),
-        "middle": fgef.get_middle_set(vw_validation),
-        "older": fgef.get_older_set(vw_validation),
-        "age_unknown": fgef.get_unknown_age_set(vw_validation),
+    if split == "test":
+        num_samples = cfg.COUNT_PERSON_SAMPLES_TEST
+    elif split == "validation":
+        num_samples = cfg.COUNT_PERSON_SAMPLES_VAL
+    else:
+        raise ValueError("split must be 'test' or 'validation'")
+    
+    wv_ds = open_images_to_wv(ds, num_samples, cfg=cfg)
+
+    # Create finer grained evaluation sets before preprocessing the dataset.
+    miaps = {
+        "female": fgef.get_predominantly_female_set(wv_ds),
+        "male": fgef.get_predominantly_male_set(wv_ds),
+        "gender_unknown": fgef.get_unknown_gender_set(wv_ds),
+        "young": fgef.get_young_set(wv_ds),
+        "middle": fgef.get_middle_set(wv_ds),
+        "older": fgef.get_older_set(wv_ds),
+        "age_unknown": fgef.get_unknown_age_set(wv_ds),
     }
 
-    # Test
-    miaps_test = {
-        "female": fgef.get_predominantly_female_set(vw_test),
-        "male": fgef.get_predominantly_male_set(vw_test),
-        "gender_unknown": fgef.get_unknown_gender_set(vw_test),
-        "young": fgef.get_young_set(vw_test),
-        "middle": fgef.get_middle_set(vw_test),
-        "older": fgef.get_older_set(vw_test),
-        "age_unknown": fgef.get_unknown_age_set(vw_test),
-    }
+    for key, value in miaps.items():
+        miaps[key] = preprocessing(value, batch_size, cfg=cfg)
 
-    for key, value in miaps_validation.items():
-        miaps_validation[key] = preprocessing(value, batch_size, cfg=cfg)
-
-    for key, value in miaps_test.items():
-        miaps_test[key] = preprocessing(value, batch_size, cfg=cfg)
-
-    return miaps_validation, miaps_test
+    return miaps
 
 
 #Distance Eval
@@ -389,7 +381,14 @@ def get_distance_eval(cfg=default_cfg, split="test"):
         split=split,
     )
 
-    ds_test = open_images_to_wv(ds_test, cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
+    if split == "test":
+        num_samples = cfg.COUNT_PERSON_SAMPLES_TEST
+    elif split == "validation":
+        num_samples = cfg.COUNT_PERSON_SAMPLES_VAL
+    else:
+        raise ValueError("split must be 'test' or 'validation'")
+
+    ds_test = open_images_to_wv(ds_test, num_samples, cfg=cfg)
     no_person = ds_test.filter(lambda ds_entry: non_person_filter(ds_entry))
     far = ds_test.filter(lambda ds_entry: fgef.filter_bb_area(ds_entry, cfg.MIN_BBOX_SIZE, 0.1))#cfg.NEAR_BB_AREA))
     mid = ds_test.filter(lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.1, 0.3))#cfg.MID_BB_AREA))
