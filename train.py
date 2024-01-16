@@ -82,30 +82,24 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
     if "distance_eval" in extra_evals:
         from wake_vision_loader import get_distance_eval
         class DistanceEvalCallback(tf.keras.callbacks.Callback):
-                
-
             def on_epoch_end(self, epoch, logs=None):
                 distance_ds = get_distance_eval(cfg, split="validation")
-                results = {}
-                results["Dist-near"] = self.model.evaluate(distance_ds["near"], verbose=1)[1]
-                results["Dist-mid"] = self.model.evaluate(distance_ds["mid"], verbose=1)[1]
-                results["Dist-far"] = self.model.evaluate(distance_ds["far"], verbose=1)[1]
-                results["Dist-no-person"] = self.model.evaluate(distance_ds["no_person"], verbose=1)[1]
                 print("Distace Eval Results:")
-                print(results)
-                wandb.log({f"epoch/{k}": v for k, v in results.items()})
+                for name, value in distance_ds.items():
+                    result = self.model.evaluate(value, verbose=0)[1]
+                    print(f"{name}: {result}")
+                    wandb.log({"epoch/Dist-"+name: result})
         
         callbacks.append(DistanceEvalCallback())
-    elif "miap" in extra_evals:
-            # Set up a callback class to be able to evaluate multiple validation sets during training.
+    if "miap" in extra_evals:
         class MIAPEvalCallback(keras.callbacks.Callback):
             def on_epoch_end(self, epoch, logs=None):
                 miaps_validation = get_miaps(cfg, split="validation")
-                print("\n Finer grained validation set performance:")
-                print(f"Results list contains {self.model.metrics_names}")
+                print("MIAPS Eval Results:")
                 for name, value in miaps_validation.items():
-                    results = self.model.evaluate(value, verbose=0)
-                    print(f"Validation performance on {name}: {results}")
+                    result = self.model.evaluate(value, verbose=0)[1]
+                    print(f"{name}: {result}")
+                    wandb.log({"epoch/MIAPS-"+name: result})
         
         callbacks.append(MIAPEvalCallback())
     
