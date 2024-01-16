@@ -82,28 +82,6 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
     #     mode='max',
     #     save_best_only=True)
     callbacks = [WandbMetricsLogger()]
-<<<<<<< HEAD
-=======
-
-    #Distance Eval on each epoch
-    if "distance_eval" in evals:
-        from wake_vision_loader import get_distance_eval
-        class DistanceEvalCallback(tf.keras.callbacks.Callback):
-                
-
-            def on_epoch_end(self, epoch, logs=None):
-                distance_ds = get_distance_eval(cfg, split="validation")
-                results = {}
-                results["Dist-near"] = self.model.evaluate(distance_ds["near"], verbose=1)[1]
-                results["Dist-mid"] = self.model.evaluate(distance_ds["mid"], verbose=1)[1]
-                results["Dist-far"] = self.model.evaluate(distance_ds["far"], verbose=1)[1]
-                results["Dist-no-person"] = self.model.evaluate(distance_ds["no_person"], verbose=1)[1]
-                print("Distace Eval Results:")
-                print(results)
-                wandb.log({f"epoch/{k}": v for k, v in results.items()})
-        
-        callbacks.append(DistanceEvalCallback())
->>>>>>> 888c9eb84e58d178d2bed03c4e7d7e78616e79b8
 
     #Distance Eval on each epoch
     if "distance_eval" in extra_evals:
