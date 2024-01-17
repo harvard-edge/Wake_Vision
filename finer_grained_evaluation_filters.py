@@ -2,6 +2,7 @@ import tensorflow as tf
 from experiment_config import default_cfg
 
 
+# MIAP Filters
 def get_miap_set(ds, miap_subset: str, miap_subset_category: str):
     return ds.filter(
         lambda x: tf.reduce_all(
@@ -46,6 +47,30 @@ def get_older_set(ds):
 
 def get_unknown_age_set(ds):
     return get_miap_set(ds, "age_presentation", tf.constant(3, tf.int64))  # Unknown
+
+
+# Lighting filters
+def get_image_lighting(ds_sample):
+    # First convert the image to greyscale
+    greyscale_image = tf.image.rgb_to_grayscale(ds_sample["image"])
+
+    # Return the average pixel value of the new greyscale image
+    return tf.reduce_mean(greyscale_image)
+
+
+def get_low_lighting(ds):
+    return ds.filter(lambda image: get_image_lighting(image) < 85)
+
+
+def get_medium_lighting(ds):
+    return ds.filter(
+        lambda image: get_image_lighting(image) >= 85
+        and get_image_lighting(image) < 170
+    )
+
+
+def get_high_lighting(ds):
+    return ds.filter(lambda image: get_image_lighting(image) >= 170)
 
 
 def filter_bb_area(ds_entry, min_area, max_area, cfg=default_cfg):

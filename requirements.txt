@@ -2,4 +2,8 @@ tensorflow
 tensorflow-datasets
 ml_collections
 pandas
+opencv-python
+jupyter
+qsl 
 keras
+wandb

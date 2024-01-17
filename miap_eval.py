@@ -12,7 +12,6 @@ os.environ["KERAS_BACKEND"] = "jax"
 import keras
 
 import tensorflow as tf
-import tensorflow_datasets as tfds
 
 from wake_vision_loader import get_miaps
 
