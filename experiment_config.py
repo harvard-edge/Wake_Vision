@@ -28,31 +28,38 @@ def get_cfg(experiment_name=None):
     cfg.SAVE_DIR = f"{cfg.BUCKET_NAME}saved_models/{cfg.EXPERIMENT_NAME}/"
     cfg.SAVE_FILE = cfg.SAVE_DIR + f"{cfg.MODEL_NAME}.keras"
 
-    cfg.COUNT_PERSON_SAMPLES_TRAIN = 844965  # Number of person samples in the WV train dataset. The number of non-person samples are 898077. We will use this number to balance the dataset.
-    cfg.COUNT_PERSON_SAMPLES_VAL = 9973  # There are 31647 non-person samples.
-    cfg.COUNT_PERSON_SAMPLES_TEST = 30226  # There are 95210 non-person samples. The distribution of persons in both the Val and Test set is close to 24% (Val:23.96) (Test:24.09) so we may not need to reduce the size of these.
-    cfg.MIN_IMAGE_LEVEL_CONFIDENCE = 5  # Minimum confidence level for image-level labels to be included in the dataset. Only used for the wake vision dataset. If 0 then even negatively human verified labels are included.
+    cfg.MIN_IMAGE_LEVEL_CONFIDENCE = 5 # Minimum confidence level for image-level labels to be included in the dataset. Only used for the wake vision dataset. If 0 then even negatively human verified labels are included.
+
+    #TODO recalculate these numbers
+    if cfg.LABEL_TYPE == "image":
+        cfg.COUNT_PERSON_SAMPLES_TRAIN = 3238953
+        cfg.COUNT_PERSON_SAMPLES_VAL = 19311
+        cfg.COUNT_PERSON_SAMPLES_TEST = 58288
+    else:
+        cfg.COUNT_PERSON_SAMPLES_TRAIN = 625152 
+        cfg.COUNT_PERSON_SAMPLES_VAL = 8531
+        cfg.COUNT_PERSON_SAMPLES_TEST = 25728
 
     # Model Config
     cfg.INPUT_SHAPE = (224, 224, 3)
     cfg.NUM_CLASSES = 2
     cfg.MODEL_SIZE = 0.25
 
-    # Train Config
-    cfg.STEPS = 10**5
+    #Train Config
+    cfg.STEPS = (10 ** 5) *2
     cfg.VAL_STEPS = cfg.STEPS // 20
     cfg.BATCH_SIZE = 128
 
     # Learning Rate Config
     cfg.INIT_LR = 0.00001
-    cfg.WARMUP_STEPS = 10**3
-    cfg.LR = 0.001
+    cfg.WARMUP_STEPS = 10 ** 3
+    cfg.LR = 0.002
     cfg.DECAY_STEPS = cfg.STEPS - cfg.WARMUP_STEPS
 
     # Weight Decay Config
     cfg.WEIGHT_DECAY = 0.000004
 
-    cfg.SHUFFLE_BUFFER_SIZE = 1024
+    cfg.SHUFFLE_BUFFER_SIZE = 1000
 
     return cfg
 
