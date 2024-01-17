@@ -170,7 +170,7 @@ def check_image_level_label(ds_entry, label_number, cfg=default_cfg):
     object_present_tensor = tf.equal(
         tf.constant(label_number, tf.int64), ds_entry["objects"]["label"]
     )
-    confidence = ds_entry["bobjects"]["bbox"][object_present_tensor]
+    confidence = ds_entry["objects"]["confidence"][object_present_tensor]
 
     confident_object_present_tensor = tf.math.greater_equal(
         confidence, cfg.MIN_IMAGE_LEVEL_CONFIDENCE
@@ -354,7 +354,7 @@ def get_lighting(cfg=default_cfg, batch_size=None, split="test"):
         num_samples = cfg.COUNT_PERSON_SAMPLES_TRAIN
     else:
         raise ValueError("split must be 'train', 'validation, or 'test'")
-    
+
     wv_ds = open_images_to_wv(ds, num_samples, cfg=cfg)
 
     lighting_ds = {
