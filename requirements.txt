@@ -1,5 +1,5 @@
-keras_core
 tensorflow
 tensorflow-datasets
 ml_collections
 pandas
+keras

@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 import os
 import pandas as pd
@@ -7,10 +6,10 @@ import yaml
 
 os.environ["KERAS_BACKEND"] = "jax"
 
-# Note that keras_core should only be imported after the backend
+# Note that keras should only be imported after the backend
 # has been configured. The backend cannot be changed once the
 # package is imported.
-import keras_core as keras
+import keras
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -52,8 +51,10 @@ def cross_val(wv_model_cfg, vww_model_cfg):
     return cross_val
 
 if __name__ == "__main__":
-    wv_yaml = "gs://wake-vision-storage/saved_models/wv_small2023_12_19-09_52_03_PM/config.yaml"
-    vww_yaml = "gs://wake-vision-storage/saved_models/vww_small2023_12_19-01_02_00_AM/config.yaml"
+
+    wv_yaml = "gs://wake-vision-storage/saved_models/wv_large_image2024_01_02-02_52_21_PM/config.yaml"
+    vww_yaml = "gs://wake-vision-storage/saved_models/vww_large2023_12_28-06_14_17_PM/config.yaml"
+
 
     with tf.io.gfile.GFile(wv_yaml, 'r') as fp:
         wv_cfg = yaml.unsafe_load(fp)
