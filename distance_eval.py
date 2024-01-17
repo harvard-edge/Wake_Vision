@@ -16,10 +16,10 @@ import tensorflow_datasets as tfds
 
 from wake_vision_loader import get_distance_eval
 
-def distance_val(model_cfg):
+
+def distance_eval(model_cfg):
     model_path = model_cfg.SAVE_FILE
-    print("Loading Model:"
-          f"{model_path}")
+    print("Loading Model:" f"{model_path}")
     model = keras.saving.load_model(model_path)
 
     distance_ds = get_distance_eval(model_cfg)
@@ -29,23 +29,24 @@ def distance_val(model_cfg):
     far_score = model.evaluate(distance_ds["far"], verbose=1)
     no_person_score = model.evaluate(distance_ds["no_person"], verbose=1)
 
-    
-
-    result = ("Distace Eval Results:"
+    result = (
+        "Distace Eval Results:"
         f"\n\tNear: {near_score[1]}"
         f"\n\tMid: {mid_score[1]}"
         f"\n\tFar: {far_score[1]}"
-        f"\n\tNo Person: {no_person_score[1]}")
-    
+        f"\n\tNo Person: {no_person_score[1]}"
+    )
+
     print(result)
 
     return result
 
+
 if __name__ == "__main__":
     model_yaml = "gs://wake-vision-storage/saved_models/wv_large2023_12_30-03_29_40_PM/config.yaml"
 
-    with tf.io.gfile.GFile(model_yaml, 'r') as fp:
+    with tf.io.gfile.GFile(model_yaml, "r") as fp:
         model_cfg = yaml.unsafe_load(fp)
         model_cfg = config_dict.ConfigDict(model_cfg)
 
-    distance_val(model_cfg)
+    distance_eval(model_cfg)
