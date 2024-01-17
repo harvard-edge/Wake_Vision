@@ -26,12 +26,12 @@ miaps_test = {
 }
 
 lighting_ds = {
-    "low_light": fgef.get_low_lighting(ds),
-    "medium_light": fgef.get_medium_lighting(ds),
-    "high_light": fgef.get_high_lighting(ds),
+    "dark": fgef.get_low_lighting(ds),
+    "normal_light": fgef.get_medium_lighting(ds),
+    "bright": fgef.get_high_lighting(ds),
 }
 
-ds = ds
+ds = lighting_ds["dark"]
 
 # Count DS samples
 d = 0

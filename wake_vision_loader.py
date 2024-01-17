@@ -337,7 +337,7 @@ def get_wake_vision(cfg=default_cfg, batch_size=None):
     return train, val, test
 
 
-def get_lighting(split, cfg=default_cfg, batch_size=None):
+def get_lighting(cfg=default_cfg, batch_size=None, split="test"):
     batch_size = batch_size or cfg.BATCH_SIZE
     ds = tfds.load(
         "partial_open_images_v7",
@@ -346,12 +346,21 @@ def get_lighting(split, cfg=default_cfg, batch_size=None):
         split=split,
     )
 
-    wv_ds = open_images_to_wv(ds, cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg)
+    if split == "test":
+        num_samples = cfg.COUNT_PERSON_SAMPLES_TEST
+    elif split == "validation":
+        num_samples = cfg.COUNT_PERSON_SAMPLES_VAL
+    elif split == "train":
+        num_samples = cfg.COUNT_PERSON_SAMPLES_TRAIN
+    else:
+        raise ValueError("split must be 'train', 'validation, or 'test'")
+    
+    wv_ds = open_images_to_wv(ds, num_samples, cfg=cfg)
 
     lighting_ds = {
-        "low_light": fgef.get_low_lighting(wv_ds),
-        "medium_light": fgef.get_medium_lighting(wv_ds),
-        "high_light": fgef.get_high_lighting(wv_ds),
+        "dark": fgef.get_low_lighting(wv_ds),
+        "normal_light": fgef.get_medium_lighting(wv_ds),
+        "bright": fgef.get_high_lighting(wv_ds),
     }
 
     for key, value in lighting_ds.items():

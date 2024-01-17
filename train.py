@@ -15,14 +15,14 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from experiment_config import default_cfg, get_cfg
-from wake_vision_loader import get_wake_vision, get_miaps
+from wake_vision_loader import get_wake_vision
 from vww_loader import get_vww
 
 import wandb
 from wandb.keras import WandbMetricsLogger
 
 
-def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
+def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_eval"]):
     wandb.init(
         entity="harvard-edge",
         project="wake-vision",
@@ -88,6 +88,7 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
 
         callbacks.append(DistanceEvalCallback())
     if "miap" in extra_evals:
+        from wake_vision_loader import get_miaps
 
         class MIAPEvalCallback(keras.callbacks.Callback):
             def on_epoch_end(self, epoch, logs=None):
@@ -99,6 +100,20 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
                     wandb.log({"epoch/MIAPS-" + name: result})
 
         callbacks.append(MIAPEvalCallback())
+
+    if "lighting_eval" in extra_evals:
+        from wake_vision_loader import get_lighting_eval
+
+        class LightingEvalCallback(keras.callbacks.Callback):
+            def on_epoch_end(self, epoch, logs=None):
+                lighting_ds = get_lighting_eval(cfg, split="validation")
+                print("Lighting Eval Results:")
+                for name, value in lighting_ds.items():
+                    result = self.model.evaluate(value, verbose=0)[1]
+                    print(f"{name}: {result}")
+                    wandb.log({"epoch/Lighting-" + name: result})
+
+        callbacks.append(LightingEvalCallback())
 
     # Train for a fixed number of steps, validating every
     model.fit(
