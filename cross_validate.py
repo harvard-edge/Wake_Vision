@@ -51,11 +51,8 @@ def cross_val(wv_model_cfg, vww_model_cfg):
     return cross_val
 
 if __name__ == "__main__":
-    # wv_yaml = "gs://wake-vision-storage/saved_models/wv_small2023_12_19-09_52_03_PM/config.yaml"
-    # vww_yaml = "gs://wake-vision-storage/saved_models/vww_small2023_12_19-01_02_00_AM/config.yaml"
 
     wv_yaml = "gs://wake-vision-storage/saved_models/wv_large_image2024_01_02-02_52_21_PM/config.yaml"
-    #"gs://wake-vision-storage/saved_models/wv_large2023_12_30-03_29_40_PM/config.yaml"
     vww_yaml = "gs://wake-vision-storage/saved_models/vww_large2023_12_28-06_14_17_PM/config.yaml"
 
 

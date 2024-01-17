@@ -42,9 +42,6 @@ def distance_val(model_cfg):
     return result
 
 if __name__ == "__main__":
-    # model_yaml = "gs://wake-vision-storage/saved_models/wv_large2023_12_28-06_14_17_PM/config.yaml"
-    # model_yaml = "gs://wake-vision-storage/saved_models/vww_large2023_12_28-06_14_17_PM/config.yaml"
-    # model_yaml = "gs://wake-vision-storage/saved_models/vww_small2023_12_28-05_08_30_AM/config.yaml"
     model_yaml = "gs://wake-vision-storage/saved_models/wv_large2023_12_30-03_29_40_PM/config.yaml"
 
     with tf.io.gfile.GFile(model_yaml, 'r') as fp:
