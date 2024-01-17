@@ -22,11 +22,7 @@ import wandb
 from wandb.keras import WandbMetricsLogger
 
 def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
-    wandb.init(project="wake-vision", config=cfg)
-
-    # TODO fix checkpointing
-    # with tf.io.gfile.GFile(f'{cfg.CHECKPOINT_DIR}config.yaml', 'w') as fp:
-    #     yaml.dump(cfg.to_yaml(), fp)
+    wandb.init(project="wake-vision", name=cfg.EXPERIMENT_NAME, config=cfg)
 
     if cfg.TARGET_DS == "vww":
         train, val, test = get_vww(cfg)
@@ -69,13 +65,6 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
         ],
     )
 
-    # TODO fix checkpointing
-    # model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
-    #     filepath=f"{cfg.CHECKPOINT_DIR}checkpoint.weights.h5",
-    #     save_weights_only=True,
-    #     monitor='val_acc',
-    #     mode='max',
-    #     save_best_only=True)
     callbacks = [WandbMetricsLogger()]
 
     #Distance Eval on each epoch
