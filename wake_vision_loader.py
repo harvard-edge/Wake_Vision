@@ -352,7 +352,7 @@ def get_miaps(cfg=default_cfg, batch_size=None, split="test"):
         num_samples = cfg.COUNT_PERSON_SAMPLES_VAL
     else:
         raise ValueError("split must be 'test' or 'validation'")
-    
+
     wv_ds = open_images_to_wv(ds, num_samples, cfg=cfg)
 
     # Create finer grained evaluation sets before preprocessing the dataset.
@@ -364,6 +364,7 @@ def get_miaps(cfg=default_cfg, batch_size=None, split="test"):
         "middle": fgef.get_middle_set(wv_ds),
         "older": fgef.get_older_set(wv_ds),
         "age_unknown": fgef.get_unknown_age_set(wv_ds),
+        "no_person": wv_ds.filter(non_person_filter),
     }
 
     for key, value in miaps.items():
@@ -372,7 +373,7 @@ def get_miaps(cfg=default_cfg, batch_size=None, split="test"):
     return miaps
 
 
-#Distance Eval
+# Distance Eval
 def get_distance_eval(cfg=default_cfg, split="test"):
     ds_test = tfds.load(
         "partial_open_images_v7",
@@ -389,10 +390,16 @@ def get_distance_eval(cfg=default_cfg, split="test"):
         raise ValueError("split must be 'test' or 'validation'")
 
     ds_test = open_images_to_wv(ds_test, num_samples, cfg=cfg)
-    no_person = ds_test.filter(lambda ds_entry: non_person_filter(ds_entry))
-    far = ds_test.filter(lambda ds_entry: fgef.filter_bb_area(ds_entry, cfg.MIN_BBOX_SIZE, 0.1))#cfg.NEAR_BB_AREA))
-    mid = ds_test.filter(lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.1, 0.3))#cfg.MID_BB_AREA))
-    near = ds_test.filter(lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.3, 1.0))#cfg.FAR_BB_AREA))
+    no_person = ds_test.filter(non_person_filter)
+    far = ds_test.filter(
+        lambda ds_entry: fgef.filter_bb_area(ds_entry, cfg.MIN_BBOX_SIZE, 0.1)
+    )  # cfg.NEAR_BB_AREA))
+    mid = ds_test.filter(
+        lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.1, 0.3)
+    )  # cfg.MID_BB_AREA))
+    near = ds_test.filter(
+        lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.3, 1.0)
+    )  # cfg.FAR_BB_AREA))
 
     no_person = preprocessing(no_person, 1, cfg=cfg)
     far = preprocessing(far, 1, cfg=cfg)
