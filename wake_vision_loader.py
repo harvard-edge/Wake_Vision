@@ -374,7 +374,8 @@ def get_miaps(cfg=default_cfg, batch_size=None, split="test"):
 
 
 # Distance Eval
-def get_distance_eval(cfg=default_cfg, split="test"):
+def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
+    batch_size = batch_size or cfg.BATCH_SIZE
     ds_test = tfds.load(
         "partial_open_images_v7",
         data_dir=cfg.WV_DIR,
@@ -401,9 +402,9 @@ def get_distance_eval(cfg=default_cfg, split="test"):
         lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.3, 1.0)
     )  # cfg.FAR_BB_AREA))
 
-    no_person = preprocessing(no_person, 1, cfg=cfg)
-    far = preprocessing(far, 1, cfg=cfg)
-    mid = preprocessing(mid, 1, cfg=cfg)
-    near = preprocessing(near, 1, cfg=cfg)
+    no_person = preprocessing(no_person, batch_size, cfg=cfg)
+    far = preprocessing(far, batch_size, cfg=cfg)
+    mid = preprocessing(mid, batch_size, cfg=cfg)
+    near = preprocessing(near, batch_size, cfg=cfg)
 
     return {"far": far, "mid": mid, "near": near, "no_person": no_person}
