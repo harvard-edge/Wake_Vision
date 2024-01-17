@@ -57,7 +57,7 @@ def get_cfg(experiment_name=None):
     # Weight Decay Config
     cfg.WEIGHT_DECAY = 0.000004
 
-    cfg.SHUFFLE_BUFFER_SIZE = 1024
+    cfg.SHUFFLE_BUFFER_SIZE = 1000
 
     return cfg
 

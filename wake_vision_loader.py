@@ -311,7 +311,7 @@ def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
     )
 
     # Batch and prefetch the dataset for improved performance
-    return ds_split.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return ds_split.batch(batch_size).prefetch(2)
 
 
 def get_wake_vision(cfg=default_cfg, batch_size=None):
