@@ -61,8 +61,6 @@ def label_person_image_labels(ds_entry, cfg=default_cfg):
             check_image_level_label(ds_entry, 11395, cfg),  # Male person
             check_image_level_label(ds_entry, 3895, cfg),  # Child
             check_image_level_label(ds_entry, 10483, cfg),  # Lady
-            check_image_level_label(ds_entry, 11417, cfg),  # Man
-            check_image_level_label(ds_entry, 11417, cfg),  # Man
             check_image_level_label(ds_entry, 139, cfg),  # Adolescent
             check_image_level_label(ds_entry, 20808, cfg),  # Youth
         ]
@@ -71,17 +69,90 @@ def label_person_image_labels(ds_entry, cfg=default_cfg):
     # Image level labels include some human body parts which is hard to determine whether to label "person". We label them as -1 here so that they get selected by neither the person or the not person filter.
     elif tf.reduce_any(
         [
-            check_image_level_label(ds_entry, 9273, cfg),  # Human eye
-            check_image_level_label(ds_entry, 17150, cfg),  # Skull
-            check_image_level_label(ds_entry, 9282, cfg),  # Human mouth
-            check_image_level_label(ds_entry, 9272, cfg),  # Human ear
-            check_image_level_label(ds_entry, 9283, cfg),  # Human nose
-            check_image_level_label(ds_entry, 9276, cfg),  # Human hair
-            check_image_level_label(ds_entry, 9278, cfg),  # Human hand
-            check_image_level_label(ds_entry, 9275, cfg),  # Human foot
-            check_image_level_label(ds_entry, 9269, cfg),  # Human arm
-            check_image_level_label(ds_entry, 9281, cfg),  # Human leg
-            check_image_level_label(ds_entry, 1661, cfg),  # Beard
+            tf.equal(
+                tf.constant(9273, tf.int64),
+                ds_entry["objects"]["label"],  # Human eye
+            ),
+            tf.equal(
+                tf.constant(17150, tf.int64),
+                ds_entry["objects"]["label"],  # Skull
+            ),
+            tf.equal(
+                tf.constant(9282, tf.int64),
+                ds_entry["objects"]["label"],  # Human mouth
+            ),
+            tf.equal(
+                tf.constant(9272, tf.int64),
+                ds_entry["objects"]["label"],  # Human ear
+            ),
+            tf.equal(
+                tf.constant(9283, tf.int64),
+                ds_entry["objects"]["label"],  # Human nose
+            ),
+            tf.equal(
+                tf.constant(9276, tf.int64),
+                ds_entry["objects"]["label"],  # Human hair
+            ),
+            tf.equal(
+                tf.constant(9278, tf.int64),
+                ds_entry["objects"]["label"],  # Human hand
+            ),
+            tf.equal(
+                tf.constant(9275, tf.int64),
+                ds_entry["objects"]["label"],  # Human foot
+            ),
+            tf.equal(
+                tf.constant(9269, tf.int64),
+                ds_entry["objects"]["label"],  # Human arm
+            ),
+            tf.equal(
+                tf.constant(9281, tf.int64),
+                ds_entry["objects"]["label"],  # Human leg
+            ),
+            tf.equal(
+                tf.constant(1661, tf.int64),
+                ds_entry["objects"]["label"],  # Beard
+            ),
+            # We also exclude an image if a person related label is present, but has not passed the confidence threshold requirement to be labelled a person.
+            tf.equal(
+                tf.constant(14048, tf.int64), ds_entry["objects"]["label"]
+            ),  # Person
+            tf.equal(
+                tf.constant(20610, tf.int64), ds_entry["objects"]["label"]
+            ),  # Woman
+            tf.equal(tf.constant(11417, tf.int64), ds_entry["objects"]["label"]),  # Man
+            tf.equal(tf.constant(8000, tf.int64), ds_entry["objects"]["label"]),  # Girl
+            tf.equal(tf.constant(2519, tf.int64), ds_entry["objects"]["label"]),  # Boy
+            tf.equal(
+                tf.constant(9270, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human body
+            tf.equal(
+                tf.constant(9274, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human face
+            tf.equal(
+                tf.constant(9279, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human head
+            tf.equal(
+                tf.constant(9266, tf.int64), ds_entry["objects"]["label"]
+            ),  # Human
+            tf.equal(
+                tf.constant(6713, tf.int64), ds_entry["objects"]["label"]
+            ),  # Female person
+            tf.equal(
+                tf.constant(11395, tf.int64), ds_entry["objects"]["label"]
+            ),  # Male person
+            tf.equal(
+                tf.constant(3895, tf.int64), ds_entry["objects"]["label"]
+            ),  # Child
+            tf.equal(
+                tf.constant(10483, tf.int64), ds_entry["objects"]["label"]
+            ),  # Lady
+            tf.equal(
+                tf.constant(139, tf.int64), ds_entry["objects"]["label"]
+            ),  # Adolescent
+            tf.equal(
+                tf.constant(20808, tf.int64), ds_entry["objects"]["label"]
+            ),  # Youth
         ]
     ):
         ds_entry["person"] = -1
@@ -171,6 +242,9 @@ def check_image_level_label(ds_entry, label_number, cfg=default_cfg):
         tf.constant(label_number, tf.int64), ds_entry["objects"]["label"]
     )
     confidence = ds_entry["objects"]["confidence"][object_present_tensor]
+
+    if tf.size(confidence) == 0:
+        return False
 
     confident_object_present_tensor = tf.math.greater_equal(
         confidence, cfg.MIN_IMAGE_LEVEL_CONFIDENCE

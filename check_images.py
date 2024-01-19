@@ -4,39 +4,36 @@ import cv2
 import wake_vision_loader
 from experiment_config import default_cfg as cfg
 import finer_grained_evaluation_filters as fgef
-
-# Get the dataset we want
-orig_ds = tfds.load(
-    "partial_open_images_v7",
-    data_dir=cfg.WV_DIR,
-    shuffle_files=False,
+from wake_vision_loader import (
+    person_filter,
+    non_person_filter,
+    label_person_image_labels,
+    label_person_bbox_labels,
 )
 
-ds = orig_ds["test"]
-ds = wake_vision_loader.open_images_to_wv(ds, cfg.COUNT_PERSON_SAMPLES_TEST)
+# Get the dataset we want
+orig_ds = tfds.load("partial_open_images_v7", data_dir=cfg.WV_DIR, shuffle_files=True)
 
-miaps_test = {
-    "female": fgef.get_predominantly_female_set(ds),
-    "male": fgef.get_predominantly_male_set(ds),
-    "gender_unknown": fgef.get_unknown_gender_set(ds),
-    "young": fgef.get_young_set(ds),
-    "middle": fgef.get_middle_set(ds),
-    "older": fgef.get_older_set(ds),
-    "age_unknown": fgef.get_unknown_age_set(ds),
-}
+ds = orig_ds["train"]
 
-lighting_ds = {
-    "dark": fgef.get_low_lighting(ds),
-    "normal_light": fgef.get_medium_lighting(ds),
-    "bright": fgef.get_high_lighting(ds),
-}
+# Label Persons
 
-ds = lighting_ds["dark"]
+# full_length = 0
+# for _ in ds:
+#    full_length += 1
+# print(f"Full Length: {full_length}")
 
 # Count DS samples
-d = 0
-for _ in ds:
-    d += 1
+# person_length = 0
+# for _ in person_ds:
+#    person_length += 1
+# print(f"Person DS Length: {person_length}")
+# non_person_length = 0
+# for _ in non_person_ds:
+#    non_person_length += 1
+# print(f"Non-Person DS Length: {non_person_length}")
+
+# print(f"Excluded: {full_length - person_length - non_person_length}")
 
 
 # Take 5 examples from the dataset
@@ -46,20 +43,14 @@ gen_items = [
             tf.image.convert_image_dtype(sample["image"], tf.uint8).numpy(),
             cv2.COLOR_RGB2BGR,
         ),
-        "original_link": sample["image/filename"],
-        "miap_labels": sample["miaps"],
-        "depiction": sample["bobjects"],
+        "person": label_person_image_labels(sample)["person"],
     }
-    for i, sample in enumerate(ds.take(10))
+    for i, sample in enumerate(ds.take(20))
 ]
 
 # Show the images
 for i, item in enumerate(gen_items):
     print("Image", i)
-    print("MIAPS:", item["miap_labels"])
-    print("Bobjects:", item["depiction"])
+    print("Person:", item["person"])
     print("------------------")
     cv2.imwrite(f"tmp/{i}.png", item["image"])
-
-
-print(f"Length: {d}")

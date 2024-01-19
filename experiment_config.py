@@ -28,15 +28,15 @@ def get_cfg(experiment_name=None):
     cfg.SAVE_DIR = f"{cfg.BUCKET_NAME}saved_models/{cfg.EXPERIMENT_NAME}/"
     cfg.SAVE_FILE = cfg.SAVE_DIR + f"{cfg.MODEL_NAME}.keras"
 
-    cfg.MIN_IMAGE_LEVEL_CONFIDENCE = 5 # Minimum confidence level for image-level labels to be included in the dataset. Only used for the wake vision dataset. If 0 then even negatively human verified labels are included.
+    cfg.MIN_IMAGE_LEVEL_CONFIDENCE = 7  # Minimum confidence level for image-level labels to be included in the dataset. Only used for the wake vision dataset. If 0 then even negatively human verified labels are included.
 
-    #TODO recalculate these numbers
+    # TODO recalculate these numbers
     if cfg.LABEL_TYPE == "image":
         cfg.COUNT_PERSON_SAMPLES_TRAIN = 3238953
         cfg.COUNT_PERSON_SAMPLES_VAL = 19311
         cfg.COUNT_PERSON_SAMPLES_TEST = 58288
     else:
-        cfg.COUNT_PERSON_SAMPLES_TRAIN = 625152 
+        cfg.COUNT_PERSON_SAMPLES_TRAIN = 625152
         cfg.COUNT_PERSON_SAMPLES_VAL = 8531
         cfg.COUNT_PERSON_SAMPLES_TEST = 25728
 
@@ -45,14 +45,14 @@ def get_cfg(experiment_name=None):
     cfg.NUM_CLASSES = 2
     cfg.MODEL_SIZE = 0.25
 
-    #Train Config
-    cfg.STEPS = (10 ** 5) *2
+    # Train Config
+    cfg.STEPS = (10**5) * 2
     cfg.VAL_STEPS = cfg.STEPS // 20
     cfg.BATCH_SIZE = 128
 
     # Learning Rate Config
     cfg.INIT_LR = 0.00001
-    cfg.WARMUP_STEPS = 10 ** 3
+    cfg.WARMUP_STEPS = 10**3
     cfg.LR = 0.002
     cfg.DECAY_STEPS = cfg.STEPS - cfg.WARMUP_STEPS
 
