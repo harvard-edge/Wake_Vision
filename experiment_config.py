@@ -30,15 +30,14 @@ def get_cfg(experiment_name=None):
 
     cfg.MIN_IMAGE_LEVEL_CONFIDENCE = 7  # Minimum confidence level for image-level labels to be included in the dataset. Only used for the wake vision dataset. If 0 then even negatively human verified labels are included.
 
-    # TODO recalculate these numbers
     if cfg.LABEL_TYPE == "image":
-        cfg.COUNT_PERSON_SAMPLES_TRAIN = 3238953
-        cfg.COUNT_PERSON_SAMPLES_VAL = 19311
-        cfg.COUNT_PERSON_SAMPLES_TEST = 58288
+        cfg.COUNT_PERSON_SAMPLES_TRAIN = 2813996
+        cfg.COUNT_PERSON_SAMPLES_VAL = 10339
+        cfg.COUNT_PERSON_SAMPLES_TEST = 31788
     else:
-        cfg.COUNT_PERSON_SAMPLES_TRAIN = 625152
-        cfg.COUNT_PERSON_SAMPLES_VAL = 8531
-        cfg.COUNT_PERSON_SAMPLES_TEST = 25728
+        cfg.COUNT_PERSON_SAMPLES_TRAIN = 619904
+        cfg.COUNT_PERSON_SAMPLES_VAL = 8307
+        cfg.COUNT_PERSON_SAMPLES_TEST = 25109
 
     # Model Config
     cfg.INPUT_SHAPE = (224, 224, 3)
