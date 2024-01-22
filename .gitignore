@@ -6,3 +6,4 @@ models/
 checkpoints/
 tensorflow_slim/
 wandb/
+tmp/
