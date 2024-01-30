@@ -7,3 +7,4 @@ jupyter
 qsl 
 keras
 wandb
+pillow
