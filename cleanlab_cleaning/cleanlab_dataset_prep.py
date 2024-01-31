@@ -17,10 +17,14 @@ ds = tfds.load(
 )
 
 # Get the validation and test wake vision dataset to prepare for export.
-wv_ds_validation = wake_vision_loader.open_images_to_wv(ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL)
-wv_ds_test = wake_vision_loader.open_images_to_wv(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST)
+wv_ds_validation = wake_vision_loader.open_images_to_wv(
+    ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL
+)
+wv_ds_test = wake_vision_loader.open_images_to_wv(
+    ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST
+)
 
-label_mapping = {0: "No Person", 1: "Person"}
+label_mapping = {0: "no_person", 1: "person"}
 
 
 def format_tensorflow_image_dataset(dataset, save_dir, split_name):
@@ -46,25 +50,29 @@ def format_tensorflow_image_dataset(dataset, save_dir, split_name):
         for idx, example in enumerate(dataset):
             image = Image.fromarray(example["image"].numpy())
             label = label_mapping[example["person"].numpy()]
-            filename = example["image/filename"].numpy()
+            filename, _ = os.path.splitext(example["image/filename"].numpy())
 
             buf = io.BytesIO()
             image.save(buf, format="PNG")
             image_data = buf.getvalue()
 
-            yield f"wv-image-folder/{split_name}/{label}/{filename}.png", image_data
+            yield f"wv_image_folder/{split_name}/{label}/{filename}.png", image_data
 
     for path, data in tqdm(image_data_generator()):
         os.makedirs(
-            os.path.join(save_dir, "wv-image-folder", split_name, label_mapping[0]), exist_ok=True
+            os.path.join(save_dir, "wv_image_folder", split_name, label_mapping[0]),
+            exist_ok=True,
         )
         os.makedirs(
-            os.path.join(save_dir, "wv-image-folder", split_name, label_mapping[1]), exist_ok=True
+            os.path.join(save_dir, "wv_image_folder", split_name, label_mapping[1]),
+            exist_ok=True,
         )
         with open(os.path.join(save_dir, path), "wb") as f:
             f.write(data)
 
-    print(f"Finished converting {split_name} TensorFlow Dataset to Image Folder Dataset")
+    print(
+        f"Finished converting {split_name} TensorFlow Dataset to Image Folder Dataset"
+    )
 
 
 # Prepare the validation dataset
