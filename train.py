@@ -32,8 +32,10 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
 
     if cfg.TARGET_DS == "vww":
         train, val, test = get_vww(cfg)
-    else:
+    elif cfg.TARGET_DS == "wv":
         train, val, test = get_wake_vision(cfg)
+    else:
+        raise ValueError("Invalid target dataset. Must be either \"vww\" or \"wv\".")
 
     model = keras.applications.MobileNetV2(
         input_shape=cfg.INPUT_SHAPE,
@@ -80,14 +82,14 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
         class DistanceEvalCallback(tf.keras.callbacks.Callback):
             def on_epoch_end(self, epoch, logs=None):
                 distance_ds = get_distance_eval(cfg, split="validation")
-                print("Distace Eval Results:")
+                print("\nDistace Eval Results:")
                 for name, value in distance_ds.items():
                     result = self.model.evaluate(value, verbose=0)[1]
                     print(f"{name}: {result}")
                     wandb.log({"epoch/Dist-" + name: result})
 
         callbacks.append(DistanceEvalCallback())
-    if "miap" in extra_evals:
+    if "miap_eval" in extra_evals:
         from wake_vision_loader import get_miaps
 
         class MIAPEvalCallback(keras.callbacks.Callback):
@@ -102,11 +104,11 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
         callbacks.append(MIAPEvalCallback())
 
     if "lighting_eval" in extra_evals:
-        from wake_vision_loader import get_lighting_eval
+        from wake_vision_loader import get_lighting
 
         class LightingEvalCallback(keras.callbacks.Callback):
             def on_epoch_end(self, epoch, logs=None):
-                lighting_ds = get_lighting_eval(cfg, split="validation")
+                lighting_ds = get_lighting(cfg, split="validation")
                 print("Lighting Eval Results:")
                 for name, value in lighting_ds.items():
                     result = self.model.evaluate(value, verbose=0)[1]
@@ -138,18 +140,22 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
 if __name__ == "__main__":
     import argparse
 
-    cfg = get_cfg()
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("--target_ds", type=str, default=cfg.TARGET_DS)
-    parser.add_argument("--model_size", type=float, default=cfg.MODEL_SIZE)
-    parser.add_argument(
-        "--input_size", type=str, default=",".join(map(str, cfg.INPUT_SHAPE))
-    )
+    parser.add_argument("-n", "--experiment_name", type=str)
+    parser.add_argument("-t", "--target_ds", type=str)
+    parser.add_argument("-l", "--label_type", type=str)
+    parser.add_argument("-ms", "--model_size", type=float)
+    parser.add_argument("-is", "--input_size", type=str)
 
     args = parser.parse_args()
-    cfg.TARGET_DS = args.target_ds
-    cfg.MODEL_SIZE = args.model_size
-    cfg.INPUT_SHAPE = tuple(map(int, args.input_size.split(",")))
+    cfg = get_cfg(args.experiment_name)
+    if args.target_ds:
+        cfg.TARGET_DS = args.target_ds
+    if args.label_type:
+        cfg.LABEL_TYPE = args.label_type
+    if args.model_size:
+        cfg.MODEL_SIZE = args.model_size
+    if args.input_size:
+        cfg.INPUT_SHAPE = tuple(map(int, args.input_size.split(",")))
 
     train(cfg)
