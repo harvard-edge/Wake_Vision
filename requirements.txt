@@ -7,3 +7,7 @@ jupyter
 qsl 
 keras
 wandb
+pillow
+cleanlab[all]
+datasets
+matplotlib
