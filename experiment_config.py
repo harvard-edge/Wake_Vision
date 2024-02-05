@@ -39,6 +39,8 @@ def get_cfg(experiment_name=None):
         cfg.COUNT_PERSON_SAMPLES_VAL = 8307
         cfg.COUNT_PERSON_SAMPLES_TEST = 25109
 
+    cfg.CORRECTED_VALIDATION_SET_PATH = "wv_validation_cleaned.csv"
+
     # Model Config
     cfg.INPUT_SHAPE = (224, 224, 3)
     cfg.NUM_CLASSES = 2

@@ -1,3 +1,4 @@
+import csv
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -8,22 +9,58 @@ import finer_grained_evaluation_filters as fgef
 
 
 # A function to convert the "Train", "Validation" and "Test" parts of open images to their respective wake vision variants.
-def open_images_to_wv(ds_split, count_person_samples, cfg=default_cfg):
+def open_images_to_wv(
+    ds_split,
+    split_name,
+    cfg=default_cfg,
+):
     # Use either the image level labels or bounding box labels (according to configuration) already in the open images dataset to label images as containing a person or no person
-    if cfg.LABEL_TYPE == "image":
-        ds_split = ds_split.map(
-            label_person_image_labels, num_parallel_calls=tf.data.AUTOTUNE
-        )
-    elif cfg.LABEL_TYPE == "bbox":
-        ds_split = ds_split.map(
-            lambda ds_entry: label_person_bbox_labels(
-                ds_entry, cfg=cfg
-            ),  # pass cfg to function
-            num_parallel_calls=tf.data.AUTOTUNE,
-        )
+    if split_name == "train":
+        if cfg.LABEL_TYPE == "image":
+            ds_split = ds_split.map(
+                label_person_image_labels, num_parallel_calls=tf.data.AUTOTUNE
+            )
+        elif cfg.LABEL_TYPE == "bbox":
+            ds_split = ds_split.map(
+                lambda ds_entry: label_person_bbox_labels(
+                    ds_entry, cfg=cfg
+                ),  # pass cfg to function
+                num_parallel_calls=tf.data.AUTOTUNE,
+            )
+        else:
+            raise ValueError(
+                'Configuration option "Label Type" must be "image" or "bbox" for the Wake Vision Dataset.'
+            )
+    elif split_name == "validation" or split_name == "test":
+        if cfg.LABEL_TYPE == "image" or cfg.LABEL_TYPE == "bbox":
+            ds_split = ds_split.map(
+                lambda ds_entry: label_person_bbox_labels(
+                    ds_entry, cfg=cfg
+                ),  # pass cfg to function
+                num_parallel_calls=tf.data.AUTOTUNE,
+            )
+        else:
+            raise ValueError(
+                'Configuration option "Label Type" must be "image" or "bbox" for the Wake Vision Dataset.'
+            )
     else:
         raise ValueError(
-            'Configuration option "Label Type" must be "image" or "bbox" for the Wake Vision Dataset.'
+            'Encountered a split that was neither "train", "validation" or "test"'
+        )
+
+    # Correct labels found to be wrong using cleanlab. Currently we only have verified labels for the "validation" split.
+    if split_name != "train" and split_name != "test":
+        verified_person_list, verified_non_person_list, verified_exclude_list = (
+            read_cleanlab_csv(f"wv_{split_name}_cleaned.csv")
+        )
+        ds_split = ds_split.map(
+            lambda ds_entry: correct_label_issues(
+                ds_entry,
+                verified_person_list,
+                verified_non_person_list,
+                verified_exclude_list,
+            ),
+            num_parallel_calls=tf.data.AUTOTUNE,
         )
 
     # Filter the dataset into a part with persons and a part with no persons
@@ -31,8 +68,19 @@ def open_images_to_wv(ds_split, count_person_samples, cfg=default_cfg):
     non_person_ds = ds_split.filter(non_person_filter)
 
     # Take an equal amount of images with persons and with no persons.
-    person_ds = person_ds.take(count_person_samples)
-    non_person_ds = non_person_ds.take(count_person_samples)
+    if split_name == "train":
+        person_ds = person_ds.take(cfg.COUNT_PERSON_SAMPLES_TRAIN)
+        non_person_ds = non_person_ds.take(cfg.COUNT_PERSON_SAMPLES_TRAIN)
+    elif split_name == "validation":
+        person_ds = person_ds.take(cfg.COUNT_PERSON_SAMPLES_VAL)
+        non_person_ds = non_person_ds.take(cfg.COUNT_PERSON_SAMPLES_VAL)
+    elif split_name == "test":
+        person_ds = person_ds.take(cfg.COUNT_PERSON_SAMPLES_TEST)
+        non_person_ds = non_person_ds.take(cfg.COUNT_PERSON_SAMPLES_TEST)
+    else:
+        raise ValueError(
+            'Encountered a split that was neither "train", "validation" or "test"'
+        )
 
     # We now interleave these two datasets with an equal probability of picking an element from each dataset. This should result in a shuffled dataset.
     # As an added benefit this allows us to shuffle the dataset differently for every epoch using "rerandomize_each_iteration".
@@ -338,6 +386,55 @@ def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
     return return_value
 
 
+def read_cleanlab_csv(file_path):
+    # Initialize lists for each category
+    verified_person_list = []
+    verified_non_person_list = []
+    verified_exclude_list = []
+
+    # Open and read the CSV file
+    with open(file_path, newline="", encoding="utf-8") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            # Check the value of 'clean_label' and append the filename to the respective list
+            if row["clean_label"] == "1":
+                verified_person_list.append(row["filename"])
+            elif row["clean_label"] == "0":
+                verified_non_person_list.append(row["filename"])
+            elif row["clean_label"] == "-1":
+                verified_exclude_list.append(row["filename"])
+
+    # Return the lists
+    return verified_person_list, verified_non_person_list, verified_exclude_list
+
+
+def correct_label_issues(
+    ds_entry, verified_person_list, verified_non_person_list, verified_exclude_list
+):
+    if tf.reduce_any(
+        tf.equal(
+            ds_entry["image/filename"],
+            verified_person_list,
+        )
+    ):
+        ds_entry["person"] = 1
+    elif tf.reduce_any(
+        tf.equal(
+            ds_entry["image/filename"],
+            verified_non_person_list,
+        )
+    ):
+        ds_entry["person"] = 0
+    elif tf.reduce_any(
+        tf.equal(
+            ds_entry["image/filename"],
+            verified_exclude_list,
+        )
+    ):
+        ds_entry["person"] = -1
+    return ds_entry
+
+
 def person_filter(ds_entry):
     return tf.equal(ds_entry["person"], 1)
 
@@ -396,13 +493,9 @@ def get_wake_vision(cfg=default_cfg, batch_size=None):
         shuffle_files=False,
     )
 
-    ds["train"] = open_images_to_wv(
-        ds["train"], cfg.COUNT_PERSON_SAMPLES_TRAIN, cfg=cfg
-    )
-    ds["validation"] = open_images_to_wv(
-        ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL, cfg=cfg
-    )
-    ds["test"] = open_images_to_wv(ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST, cfg=cfg)
+    ds["train"] = open_images_to_wv(ds["train"], "train", cfg=cfg)
+    ds["validation"] = open_images_to_wv(ds["validation"], "validation", cfg=cfg)
+    ds["test"] = open_images_to_wv(ds["test"], "test", cfg=cfg)
 
     train = preprocessing(ds["train"], batch_size, train=True, cfg=cfg)
     val = preprocessing(ds["validation"], batch_size, cfg=cfg)
@@ -420,16 +513,10 @@ def get_lighting(cfg=default_cfg, batch_size=None, split="test"):
         split=split,
     )
 
-    if split == "test":
-        num_samples = cfg.COUNT_PERSON_SAMPLES_TEST
-    elif split == "validation":
-        num_samples = cfg.COUNT_PERSON_SAMPLES_VAL
-    elif split == "train":
-        num_samples = cfg.COUNT_PERSON_SAMPLES_TRAIN
-    else:
-        raise ValueError("split must be 'train', 'validation, or 'test'")
+    if split != "train" and split != "validation" and split != "test":
+        raise ValueError("Split must be 'train', 'validation, or 'test'")
 
-    wv_ds = open_images_to_wv(ds, num_samples, cfg=cfg)
+    wv_ds = open_images_to_wv(ds, split, cfg=cfg)
 
     lighting_ds = {
         "dark": fgef.get_low_lighting(wv_ds),
@@ -452,14 +539,10 @@ def get_miaps(cfg=default_cfg, batch_size=None, split="test"):
         split=split,
     )
 
-    if split == "test":
-        num_samples = cfg.COUNT_PERSON_SAMPLES_TEST
-    elif split == "validation":
-        num_samples = cfg.COUNT_PERSON_SAMPLES_VAL
-    else:
+    if split != "test" and split != "validation":
         raise ValueError("split must be 'test' or 'validation'")
 
-    wv_ds = open_images_to_wv(ds, num_samples, cfg=cfg)
+    wv_ds = open_images_to_wv(ds, split, cfg=cfg)
 
     # Create finer grained evaluation sets before preprocessing the dataset.
     miaps = {
@@ -489,14 +572,10 @@ def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
         split=split,
     )
 
-    if split == "test":
-        num_samples = cfg.COUNT_PERSON_SAMPLES_TEST
-    elif split == "validation":
-        num_samples = cfg.COUNT_PERSON_SAMPLES_VAL
-    else:
+    if split != "test" and split != "validation":
         raise ValueError("split must be 'test' or 'validation'")
 
-    ds_test = open_images_to_wv(ds_test, num_samples, cfg=cfg)
+    ds_test = open_images_to_wv(ds_test, split, cfg=cfg)
     no_person = ds_test.filter(non_person_filter)
     far = ds_test.filter(
         lambda ds_entry: fgef.filter_bb_area(ds_entry, cfg.MIN_BBOX_SIZE, 0.1)
