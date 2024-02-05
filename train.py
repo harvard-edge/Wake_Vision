@@ -72,7 +72,9 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
         from wake_vision_loader import get_distance_eval
         class DistanceEvalCallback(tf.keras.callbacks.Callback):
             def on_epoch_end(self, epoch, logs=None):
-                distance_ds = get_distance_eval(cfg, split="validation")
+                dist_cfg = cfg.copy_and_resolve_references()
+                dist_cfg.MIN_BBOX_SIZE = 0.05
+                distance_ds = get_distance_eval(dist_cfg, split="validation")
                 print("Distace Eval Results:")
                 for name, value in distance_ds.items():
                     result = self.model.evaluate(value, verbose=0)[1]
@@ -80,7 +82,7 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
                     wandb.log({"epoch/Dist-"+name: result})
         
         callbacks.append(DistanceEvalCallback())
-    if "miap" in extra_evals:
+    if "miap_eval" in extra_evals:
         class MIAPEvalCallback(keras.callbacks.Callback):
             def on_epoch_end(self, epoch, logs=None):
                 miaps_validation = get_miaps(cfg, split="validation")

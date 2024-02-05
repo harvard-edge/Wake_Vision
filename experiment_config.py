@@ -8,7 +8,7 @@ def get_cfg(experiment_name=None):
     cfg.BUCKET_NAME = "gs://wake-vision-storage/"
     cfg.EXPERIMENT_TIME = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
     cfg.EXPERIMENT_NAME = (
-        experiment_name + cfg.EXPERIMENT_TIME
+        experiment_name + "_" + cfg.EXPERIMENT_TIME
         if experiment_name
         else cfg.EXPERIMENT_TIME
     )
