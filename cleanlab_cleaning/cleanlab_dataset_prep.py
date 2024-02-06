@@ -17,12 +17,8 @@ ds = tfds.load(
 )
 
 # Get the validation and test wake vision dataset to prepare for export.
-wv_ds_validation = wake_vision_loader.open_images_to_wv(
-    ds["validation"], cfg.COUNT_PERSON_SAMPLES_VAL
-)
-wv_ds_test = wake_vision_loader.open_images_to_wv(
-    ds["test"], cfg.COUNT_PERSON_SAMPLES_TEST
-)
+wv_ds_validation = wake_vision_loader.open_images_to_wv(ds["validation"], "validation")
+wv_ds_test = wake_vision_loader.open_images_to_wv(ds["test"], "test")
 
 label_mapping = {0: "no_person", 1: "person"}
 
