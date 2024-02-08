@@ -151,18 +151,18 @@ def distill(teacher_config, student_cfg=default_cfg, extra_evals=["distance_eval
         
         callbacks.append(MIAPEvalCallback())
 
-    class distillCallback(keras.callbacks.Callback):
-        def on_epoch_end(self, epoch, logs=None):
-            kl_loss = []
-            for batch in val:
-                images, _ = batch
-                teacher_pred = teacher(images, training=False)
-                student_pred = self.model(images, training=False)
-                kl_loss.append(keras.losses.KLDivergence()(teacher_pred, student_pred))
-            kl_loss = np.mean(kl_loss)
-            print(f"KL-Divergence: {kl_loss}")
-            wandb.log({"epoch/KL-Divergence": kl_loss})
-    callbacks.append(distillCallback())
+    # class distillCallback(keras.callbacks.Callback):
+    #     def on_epoch_end(self, epoch, logs=None):
+    #         kl_loss = []
+    #         for batch in val:
+    #             images, _ = batch
+    #             teacher_pred = teacher(images, training=False)
+    #             student_pred = self.model(images, training=False)
+    #             kl_loss.append(keras.losses.KLDivergence()(teacher_pred, student_pred))
+    #         kl_loss = np.mean(kl_loss)
+    #         print(f"KL-Divergence: {kl_loss}")
+    #         wandb.log({"epoch/KL-Divergence": kl_loss})
+    # callbacks.append(distillCallback())
 
     
 
@@ -188,7 +188,7 @@ if __name__ == "__main__":
     import yaml
     from ml_collections import config_dict
 
-    teacher_name = "wv_small_256x256_min_bbox_size_0.12024_01_26-03_19_42_AM/"
+    teacher_name = "2024_02_05-03_28_30_PM"
 
     cfg = get_cfg()
 
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     cfg.BATCH_SIZE = args.bs
 
     print("teacher_name:", teacher_name)
-    teacher_yaml = "gs://wake-vision-storage/saved_models/" + teacher_name + "config.yaml"
+    teacher_yaml = "gs://wake-vision-storage/saved_models/" + teacher_name + "/config.yaml"
     with tf.io.gfile.GFile(teacher_yaml, 'r') as fp:
         teacher_cfg = yaml.unsafe_load(fp)
         teacher_cfg = config_dict.ConfigDict(teacher_cfg)
