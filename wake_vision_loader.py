@@ -14,16 +14,36 @@ def open_images_to_wv(
     split_name,
     cfg=default_cfg,
 ):
+    # First use the config flags to figure out what labels should be considered as person labels.
+    if cfg.LABEL_TYPE == "image":
+        image_level_person_label_list = list(cfg.IMAGE_LEVEL_PERSON_DICTIONARY.values())
+        if cfg.BODY_PARTS_FLAG:
+            image_level_person_label_list.extend(
+                cfg.IMAGE_LEVEL_BODY_PART_DICTIONARY.values()
+            )
+        if cfg.DEPICTION_SKULL_FLAG:
+            image_level_person_label_list.extend(
+                cfg.IMAGE_LEVEL_SKULL_DICTIONARY.values()
+            )
+    bbox_person_label_list = list(cfg.BBOX_PERSON_DICTIONARY.values())
+    if cfg.BODY_PARTS_FLAG:
+        bbox_person_label_list.extend(cfg.BBOX_BODY_PART_DICTIONARY.values())
+    if cfg.DEPICTION_SKULL_FLAG:
+        bbox_person_label_list.extend(cfg.BBOX_SKULL_DICTIONARY.values())
+
     # Use either the image level labels or bounding box labels (according to configuration) already in the open images dataset to label images as containing a person or no person
     if split_name == "train":
         if cfg.LABEL_TYPE == "image":
             ds_split = ds_split.map(
-                label_person_image_labels, num_parallel_calls=tf.data.AUTOTUNE
+                lambda ds_entry: label_person_image_labels(
+                    ds_entry, image_level_person_label_list, cfg=cfg
+                ),
+                num_parallel_calls=tf.data.AUTOTUNE,
             )
         elif cfg.LABEL_TYPE == "bbox":
             ds_split = ds_split.map(
                 lambda ds_entry: label_person_bbox_labels(
-                    ds_entry, cfg=cfg
+                    ds_entry, bbox_person_label_list, cfg=cfg
                 ),  # pass cfg to function
                 num_parallel_calls=tf.data.AUTOTUNE,
             )
@@ -35,7 +55,7 @@ def open_images_to_wv(
         if cfg.LABEL_TYPE == "image" or cfg.LABEL_TYPE == "bbox":
             ds_split = ds_split.map(
                 lambda ds_entry: label_person_bbox_labels(
-                    ds_entry, cfg=cfg
+                    ds_entry, bbox_person_label_list, cfg=cfg
                 ),  # pass cfg to function
                 num_parallel_calls=tf.data.AUTOTUNE,
             )
@@ -50,9 +70,14 @@ def open_images_to_wv(
 
     # Correct labels found to be wrong using cleanlab. Currently we only have verified labels for the "validation" split.
     if split_name != "train" and split_name != "test":
-        verified_person_list, verified_non_person_list, verified_exclude_list = (
-            read_cleanlab_csv(f"wv_{split_name}_cleaned.csv")
-        )
+        try:
+            verified_person_list, verified_non_person_list, verified_exclude_list = (
+                read_cleanlab_csv(f"wv_{split_name}_cleaned.csv")
+            )
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"Could not find the file wv_{split_name}_cleaned.csv in the current directory. Please download this file from the github repository, or generate it yourself using the scripts in the cleanlab_cleaning directory"
+            )
         ds_split = ds_split.map(
             lambda ds_entry: correct_label_issues(
                 ds_entry,
@@ -93,114 +118,19 @@ def open_images_to_wv(
     return ds_split
 
 
-def label_person_image_labels(ds_entry, cfg=default_cfg):
+def label_person_image_labels(ds_entry, person_label_list, cfg=default_cfg):
     if tf.reduce_any(
         [
-            check_image_level_label(ds_entry, 14048, cfg),  # Person
-            check_image_level_label(ds_entry, 20610, cfg),  # Woman
-            check_image_level_label(ds_entry, 11417, cfg),  # Man
-            check_image_level_label(ds_entry, 8000, cfg),  # Girl
-            check_image_level_label(ds_entry, 2519, cfg),  # Boy
-            check_image_level_label(ds_entry, 9270, cfg),  # Human body
-            check_image_level_label(ds_entry, 9274, cfg),  # Human face
-            check_image_level_label(ds_entry, 9279, cfg),  # Human head
-            check_image_level_label(ds_entry, 9266, cfg),  # Human
-            check_image_level_label(ds_entry, 6713, cfg),  # Female person
-            check_image_level_label(ds_entry, 11395, cfg),  # Male person
-            check_image_level_label(ds_entry, 3895, cfg),  # Child
-            check_image_level_label(ds_entry, 10483, cfg),  # Lady
-            check_image_level_label(ds_entry, 139, cfg),  # Adolescent
-            check_image_level_label(ds_entry, 20808, cfg),  # Youth
+            check_image_level_label(ds_entry, person_label, cfg)
+            for person_label in person_label_list
         ]
     ):
         ds_entry["person"] = 1
-    # Image level labels include some human body parts which is hard to determine whether to label "person". We label them as -1 here so that they get selected by neither the person or the not person filter.
+    # If a person related label is present but no person related label has not passed the confidence threshold requirement to be labelled a person, we exclude the image.
     elif tf.reduce_any(
         [
-            tf.equal(
-                tf.constant(9273, tf.int64),
-                ds_entry["objects"]["label"],  # Human eye
-            ),
-            tf.equal(
-                tf.constant(17150, tf.int64),
-                ds_entry["objects"]["label"],  # Skull
-            ),
-            tf.equal(
-                tf.constant(9282, tf.int64),
-                ds_entry["objects"]["label"],  # Human mouth
-            ),
-            tf.equal(
-                tf.constant(9272, tf.int64),
-                ds_entry["objects"]["label"],  # Human ear
-            ),
-            tf.equal(
-                tf.constant(9283, tf.int64),
-                ds_entry["objects"]["label"],  # Human nose
-            ),
-            tf.equal(
-                tf.constant(9276, tf.int64),
-                ds_entry["objects"]["label"],  # Human hair
-            ),
-            tf.equal(
-                tf.constant(9278, tf.int64),
-                ds_entry["objects"]["label"],  # Human hand
-            ),
-            tf.equal(
-                tf.constant(9275, tf.int64),
-                ds_entry["objects"]["label"],  # Human foot
-            ),
-            tf.equal(
-                tf.constant(9269, tf.int64),
-                ds_entry["objects"]["label"],  # Human arm
-            ),
-            tf.equal(
-                tf.constant(9281, tf.int64),
-                ds_entry["objects"]["label"],  # Human leg
-            ),
-            tf.equal(
-                tf.constant(1661, tf.int64),
-                ds_entry["objects"]["label"],  # Beard
-            ),
-            # We also exclude an image if a person related label is present, but has not passed the confidence threshold requirement to be labelled a person.
-            tf.equal(
-                tf.constant(14048, tf.int64), ds_entry["objects"]["label"]
-            ),  # Person
-            tf.equal(
-                tf.constant(20610, tf.int64), ds_entry["objects"]["label"]
-            ),  # Woman
-            tf.equal(tf.constant(11417, tf.int64), ds_entry["objects"]["label"]),  # Man
-            tf.equal(tf.constant(8000, tf.int64), ds_entry["objects"]["label"]),  # Girl
-            tf.equal(tf.constant(2519, tf.int64), ds_entry["objects"]["label"]),  # Boy
-            tf.equal(
-                tf.constant(9270, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human body
-            tf.equal(
-                tf.constant(9274, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human face
-            tf.equal(
-                tf.constant(9279, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human head
-            tf.equal(
-                tf.constant(9266, tf.int64), ds_entry["objects"]["label"]
-            ),  # Human
-            tf.equal(
-                tf.constant(6713, tf.int64), ds_entry["objects"]["label"]
-            ),  # Female person
-            tf.equal(
-                tf.constant(11395, tf.int64), ds_entry["objects"]["label"]
-            ),  # Male person
-            tf.equal(
-                tf.constant(3895, tf.int64), ds_entry["objects"]["label"]
-            ),  # Child
-            tf.equal(
-                tf.constant(10483, tf.int64), ds_entry["objects"]["label"]
-            ),  # Lady
-            tf.equal(
-                tf.constant(139, tf.int64), ds_entry["objects"]["label"]
-            ),  # Adolescent
-            tf.equal(
-                tf.constant(20808, tf.int64), ds_entry["objects"]["label"]
-            ),  # Youth
+            tf.equal(tf.constant(person_label, tf.int64), ds_entry["objects"]["label"])
+            for person_label in person_label_list
         ]
     ):
         ds_entry["person"] = -1
@@ -209,73 +139,21 @@ def label_person_image_labels(ds_entry, cfg=default_cfg):
     return ds_entry
 
 
-def label_person_bbox_labels(ds_entry, cfg=default_cfg):
+def label_person_bbox_labels(ds_entry, person_label_list, cfg=default_cfg):
     if tf.math.equal(tf.size(ds_entry["bobjects"]["label"]), 0):
         ds_entry["person"] = -1
     elif tf.reduce_any(
         [
-            check_bbox_label(ds_entry, 68, cfg=cfg),  # Person
-            check_bbox_label(ds_entry, 227, cfg=cfg),  # Woman
-            check_bbox_label(ds_entry, 307, cfg=cfg),  # Man
-            check_bbox_label(ds_entry, 332, cfg=cfg),  # Girl
-            check_bbox_label(ds_entry, 50, cfg=cfg),  # Boy
-            check_bbox_label(ds_entry, 176, cfg=cfg),  # Human body
-            check_bbox_label(ds_entry, 501, cfg=cfg),  # Human face
-            check_bbox_label(ds_entry, 291, cfg=cfg),  # Human head
+            check_bbox_label(ds_entry, person_label, cfg=cfg)
+            for person_label in person_label_list
         ]
     ):
         ds_entry["person"] = 1
-    # Bounding box labels include some human body parts which is hard to determine whether to label "person". We label them as -1 here so that they get selected by neither the person or the not person filter.
+    # In case any person bounding box label is present, but doesn't pass the requirements in check_bbox_label, we exclude the image.
     elif tf.reduce_any(
         [
-            tf.equal(
-                tf.constant(176, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human body
-            tf.equal(
-                tf.constant(14, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human eye
-            tf.equal(tf.constant(29, tf.int64), ds_entry["bobjects"]["label"]),  # Skull
-            tf.equal(
-                tf.constant(147, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human mouth
-            tf.equal(
-                tf.constant(223, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human ear
-            tf.equal(
-                tf.constant(567, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human nose
-            tf.equal(
-                tf.constant(252, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human hair
-            tf.equal(
-                tf.constant(572, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human hand
-            tf.equal(
-                tf.constant(213, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human foot
-            tf.equal(
-                tf.constant(502, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human arm
-            tf.equal(
-                tf.constant(220, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human leg
-            tf.equal(tf.constant(20, tf.int64), ds_entry["bobjects"]["label"]),  # Beard
-            # bb label is present but either too small, not in center crop or a depiction of a person (e.g. a drawing)
-            tf.equal(
-                tf.constant(68, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Person
-            tf.equal(
-                tf.constant(227, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Woman
-            tf.equal(tf.constant(307, tf.int64), ds_entry["bobjects"]["label"]),  # Man
-            tf.equal(tf.constant(332, tf.int64), ds_entry["bobjects"]["label"]),  # Girl
-            tf.equal(tf.constant(50, tf.int64), ds_entry["bobjects"]["label"]),  # Boy
-            tf.equal(
-                tf.constant(501, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human face
-            tf.equal(
-                tf.constant(291, tf.int64), ds_entry["bobjects"]["label"]
-            ),  # Human head
+            tf.equal(tf.constant(person_label, tf.int64), ds_entry["bobjects"]["label"])
+            for person_label in person_label_list
         ]
     ):
         ds_entry["person"] = -1

@@ -41,6 +41,68 @@ def get_cfg(experiment_name=None):
 
     cfg.CORRECTED_VALIDATION_SET_PATH = "wv_validation_cleaned.csv"
 
+    cfg.BODY_PARTS_FLAG = True  # Only used for the wake vision dataset. If True, body parts are considered persons. If False, the body parts are not considered during labelling.
+    cfg.DEPICTION_SKULL_FLAG = False  # Only used for the wake vision dataset. If True, images of skulls and depictions are considered persons. If False, images with skulls and depictions are not considered during labelling.
+
+    # Image Level Label Dictionaries
+    cfg.IMAGE_LEVEL_PERSON_DICTIONARY = {
+        "Person": 14048,
+        "Woman": 20610,
+        "Man": 11417,
+        "Girl": 8000,
+        "Boy": 2519,
+        "Human": 9266,
+        "Female person": 6713,
+        "Male person": 11395,
+        "Child": 3895,
+        "Lady": 10483,
+        "Adolescent": 139,
+        "Youth": 20808,
+    }
+    cfg.IMAGE_LEVEL_BODY_PART_DICTIONARY = {
+        "Human body": 9270,
+        "Human face": 9274,
+        "Human head": 9279,
+        "Human eye": 9273,
+        "Human mouth": 9282,
+        "Human ear": 9272,
+        "Human nose": 9283,
+        "Human hair": 9276,
+        "Human hand": 9278,
+        "Human foot": 9275,
+        "Human arm": 9269,
+        "Human leg": 9281,
+    }
+    cfg.IMAGE_LEVEL_SKULL_DICTIONARY = {
+        "Skull": 17150,
+    }
+
+    # Bounding Box Label Dictionaries
+    cfg.BBOX_PERSON_DICTIONARY = {
+        "Person": 68,
+        "Woman": 227,
+        "Man:": 307,
+        "Girl": 332,
+        "Boy": 50,
+    }
+    cfg.BBOX_BODY_PART_DICTIONARY = {
+        "Human body": 176,
+        "Human face": 501,
+        "Human head": 291,
+        "Human eye": 14,
+        "Human mouth": 147,
+        "Human ear": 223,
+        "Human nose": 567,
+        "Human hair": 252,
+        "Human hand": 572,
+        "Human foot": 213,
+        "Human arm": 502,
+        "Human leg": 220,
+    }
+    cfg.BBOX_SKULL_DICTIONARY = {
+        "Skull": 29,
+    }
+
     # Model Config
     cfg.INPUT_SHAPE = (224, 224, 3)
     cfg.NUM_CLASSES = 2
