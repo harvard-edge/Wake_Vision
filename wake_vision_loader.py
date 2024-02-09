@@ -189,15 +189,14 @@ def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
         tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
     )
 
-    # Remove the positive values from object_present_tensor that stem from depictions.
-    depiction_tensor = tf.equal(
-        tf.constant(0, tf.int8), ds_entry["bobjects"]["is_depiction"]
-    )
-    non_depiction_object_present_tensor = tf.logical_and(
-        object_present_tensor, depiction_tensor
-    )
+    # Remove the positive values from object_present_tensor that stem from depictions if the depiction flag is not set.
+    if not cfg.DEPICTION_SKULL_FLAG:
+        depiction_tensor = tf.equal(
+            tf.constant(0, tf.int8), ds_entry["bobjects"]["is_depiction"]
+        )
+        object_present_tensor = tf.logical_and(object_present_tensor, depiction_tensor)
 
-    bounding_boxes = ds_entry["bobjects"]["bbox"][non_depiction_object_present_tensor]
+    bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
 
     # crop the bounding box area to the center crop that will happen in preprocessing.
     orig_image_h = tf.shape(ds_entry["image"])[0]
