@@ -30,15 +30,6 @@ def get_cfg(experiment_name=None):
 
     cfg.MIN_IMAGE_LEVEL_CONFIDENCE = 7  # Minimum confidence level for image-level labels to be included in the dataset. Only used for the wake vision dataset. If 0 then even negatively human verified labels are included.
 
-    if cfg.LABEL_TYPE == "image":
-        cfg.COUNT_PERSON_SAMPLES_TRAIN = 2813996
-        cfg.COUNT_PERSON_SAMPLES_VAL = 10339
-        cfg.COUNT_PERSON_SAMPLES_TEST = 31788
-    else:
-        cfg.COUNT_PERSON_SAMPLES_TRAIN = 619904
-        cfg.COUNT_PERSON_SAMPLES_VAL = 8307
-        cfg.COUNT_PERSON_SAMPLES_TEST = 25109
-
     cfg.CORRECTED_VALIDATION_SET_PATH = "wv_validation_cleaned.csv"
 
     cfg.BODY_PARTS_FLAG = True  # Only used for the wake vision dataset. If True, body parts are considered persons. If False, the body parts are not considered during labelling.

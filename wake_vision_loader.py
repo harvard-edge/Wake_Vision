@@ -92,26 +92,11 @@ def open_images_to_wv(
     person_ds = ds_split.filter(person_filter)
     non_person_ds = ds_split.filter(non_person_filter)
 
-    # Take an equal amount of images with persons and with no persons.
-    if split_name == "train":
-        person_ds = person_ds.take(cfg.COUNT_PERSON_SAMPLES_TRAIN)
-        non_person_ds = non_person_ds.take(cfg.COUNT_PERSON_SAMPLES_TRAIN)
-    elif split_name == "validation":
-        person_ds = person_ds.take(cfg.COUNT_PERSON_SAMPLES_VAL)
-        non_person_ds = non_person_ds.take(cfg.COUNT_PERSON_SAMPLES_VAL)
-    elif split_name == "test":
-        person_ds = person_ds.take(cfg.COUNT_PERSON_SAMPLES_TEST)
-        non_person_ds = non_person_ds.take(cfg.COUNT_PERSON_SAMPLES_TEST)
-    else:
-        raise ValueError(
-            'Encountered a split that was neither "train", "validation" or "test"'
-        )
-
     # We now interleave these two datasets with an equal probability of picking an element from each dataset. This should result in a shuffled dataset.
     # As an added benefit this allows us to shuffle the dataset differently for every epoch using "rerandomize_each_iteration".
     ds_split = tf.data.Dataset.sample_from_datasets(
         [person_ds, non_person_ds],
-        stop_on_empty_dataset=False,
+        stop_on_empty_dataset=True,
         rerandomize_each_iteration=True,
     )
 
