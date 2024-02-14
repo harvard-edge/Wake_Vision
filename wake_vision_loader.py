@@ -21,15 +21,9 @@ def open_images_to_wv(
             image_level_person_label_list.extend(
                 cfg.IMAGE_LEVEL_BODY_PART_DICTIONARY.values()
             )
-        if cfg.DEPICTION_SKULL_FLAG:
-            image_level_person_label_list.extend(
-                cfg.IMAGE_LEVEL_SKULL_DICTIONARY.values()
-            )
     bbox_person_label_list = list(cfg.BBOX_PERSON_DICTIONARY.values())
     if cfg.BODY_PARTS_FLAG:
         bbox_person_label_list.extend(cfg.BBOX_BODY_PART_DICTIONARY.values())
-    if cfg.DEPICTION_SKULL_FLAG:
-        bbox_person_label_list.extend(cfg.BBOX_SKULL_DICTIONARY.values())
 
     # Use either the image level labels or bounding box labels (according to configuration) already in the open images dataset to label images as containing a person or no person
     if split_name == "train":
@@ -68,12 +62,15 @@ def open_images_to_wv(
             'Encountered a split that was neither "train", "validation" or "test"'
         )
 
-    # Correct labels found to be wrong using cleanlab. Currently we only have verified labels for the "validation" split.
-    if split_name != "train" and split_name != "test":
+    # Correct labels found to be wrong using cleanlab. Currently we only have verified labels for the "validation" and "test" split.
+    if split_name != "train":
         try:
-            verified_person_list, verified_non_person_list, verified_exclude_list = (
-                read_cleanlab_csv(f"wv_{split_name}_cleaned.csv")
-            )
+            (
+                verified_person_list,
+                verified_non_person_list,
+                verified_exclude_list,
+                verified_depiction_list,
+            ) = read_cleanlab_csv(f"wv_{split_name}_cleaned.csv")
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"Could not find the file wv_{split_name}_cleaned.csv in the current directory. Please download this file from the github repository, or generate it yourself using the scripts in the cleanlab_cleaning directory"
@@ -84,6 +81,8 @@ def open_images_to_wv(
                 verified_person_list,
                 verified_non_person_list,
                 verified_exclude_list,
+                verified_depiction_list,
+                cfg,
             ),
             num_parallel_calls=tf.data.AUTOTUNE,
         )
@@ -105,18 +104,36 @@ def open_images_to_wv(
 
 def label_person_image_labels(ds_entry, person_label_list, cfg=default_cfg):
     if tf.reduce_any(
-        [
+        list(
             check_image_level_label(ds_entry, person_label, cfg)
             for person_label in person_label_list
-        ]
+        )
     ):
         ds_entry["person"] = 1
     # If a person related label is present but no person related label has not passed the confidence threshold requirement to be labelled a person, we exclude the image.
     elif tf.reduce_any(
-        [
-            tf.equal(tf.constant(person_label, tf.int64), ds_entry["objects"]["label"])
-            for person_label in person_label_list
-        ]
+        tf.equal(
+            tf.constant(
+                list(person_label for person_label in person_label_list), tf.int64
+            ),
+            ds_entry["objects"]["label"],
+        )
+    ) or (
+        cfg.EXCLUDE_DEPICTION_SKULL_FLAG
+        and tf.reduce_any(
+            tf.equal(
+                (
+                    tf.constant(
+                        list(
+                            skull_label
+                            for skull_label in cfg.IMAGE_LEVEL_SKULL_DICTIONARY.values()
+                        ),
+                        tf.int64,
+                    )
+                ),
+                ds_entry["objects"]["label"],
+            )
+        )
     ):
         ds_entry["person"] = -1
     else:
@@ -128,18 +145,33 @@ def label_person_bbox_labels(ds_entry, person_label_list, cfg=default_cfg):
     if tf.math.equal(tf.size(ds_entry["bobjects"]["label"]), 0):
         ds_entry["person"] = -1
     elif tf.reduce_any(
-        [
-            check_bbox_label(ds_entry, person_label, cfg=cfg)
+        list(
+            check_bbox_label(ds_entry, person_label, exclude_mode=False, cfg=cfg)
             for person_label in person_label_list
-        ]
+        )
     ):
         ds_entry["person"] = 1
-    # In case any person bounding box label is present, but doesn't pass the requirements in check_bbox_label, we exclude the image.
-    elif tf.reduce_any(
-        [
-            tf.equal(tf.constant(person_label, tf.int64), ds_entry["bobjects"]["label"])
-            for person_label in person_label_list
-        ]
+    # In case any person bounding box label is present, but doesn't pass the requirements in check_bbox_label, we exclude the image unless it is a depiction or a skull and the exclude depiction skull flag is set to False.
+    #
+    elif cfg.EXCLUDE_DEPICTION_SKULL_FLAG and (
+        tf.reduce_any(
+            list(
+                check_bbox_label(ds_entry, person_label, exclude_mode=True, cfg=cfg)
+                for person_label in person_label_list
+            )
+        )
+        or tf.reduce_any(
+            tf.equal(
+                tf.constant(
+                    list(
+                        skull_label
+                        for skull_label in cfg.BBOX_SKULL_DICTIONARY.values()
+                    ),
+                    tf.int64,
+                ),
+                ds_entry["bobjects"]["label"],
+            )
+        )
     ):
         ds_entry["person"] = -1
     else:
@@ -168,18 +200,28 @@ def check_image_level_label(ds_entry, label_number, cfg=default_cfg):
 
 
 # This function checks for the presence of a bounding box object occupying a certain size in the ds_entry. Size can be configured in experiment_config.py.
-def check_bbox_label(ds_entry, label_number, cfg=default_cfg):
+def check_bbox_label(
+    ds_entry,
+    label_number,
+    exclude_mode,
+    cfg=default_cfg,
+):
     return_value = False  # This extra variable is needed as tensorflow does not allow return statements in loops.
     object_present_tensor = tf.equal(
         tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
     )
 
-    # Remove the positive values from object_present_tensor that stem from depictions if the depiction flag is not set.
-    if not cfg.DEPICTION_SKULL_FLAG:
-        depiction_tensor = tf.equal(
+    # Remove the positive values from object_present_tensor that stem from depictions.
+    if not exclude_mode and not cfg.EXCLUDE_DEPICTION_SKULL_FLAG:
+        non_depiction_tensor = tf.equal(
             tf.constant(0, tf.int8), ds_entry["bobjects"]["is_depiction"]
         )
-        object_present_tensor = tf.logical_and(object_present_tensor, depiction_tensor)
+        object_present_tensor = tf.logical_and(
+            object_present_tensor, non_depiction_tensor
+        )
+
+    if not tf.reduce_any(object_present_tensor):
+        return False
 
     bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
 
@@ -253,6 +295,7 @@ def read_cleanlab_csv(file_path):
     verified_person_list = []
     verified_non_person_list = []
     verified_exclude_list = []
+    verified_depiction_list = []
 
     # Open and read the CSV file
     with open(file_path, newline="", encoding="utf-8") as csvfile:
@@ -265,13 +308,29 @@ def read_cleanlab_csv(file_path):
                 verified_non_person_list.append(row["filename"])
             elif row["clean_label"] == "-1":
                 verified_exclude_list.append(row["filename"])
+            elif row["clean_label"] == "-2":
+                verified_depiction_list.append(row["filename"])
+            else:
+                raise ValueError(
+                    "Encountered a clean_label that was not 1, 0, -1 or -2 in the cleanlab csv file."
+                )
 
     # Return the lists
-    return verified_person_list, verified_non_person_list, verified_exclude_list
+    return (
+        verified_person_list,
+        verified_non_person_list,
+        verified_exclude_list,
+        verified_depiction_list,
+    )
 
 
 def correct_label_issues(
-    ds_entry, verified_person_list, verified_non_person_list, verified_exclude_list
+    ds_entry,
+    verified_person_list,
+    verified_non_person_list,
+    verified_exclude_list,
+    verified_depiction_list,
+    cfg,
 ):
     if tf.reduce_any(
         tf.equal(
@@ -294,6 +353,16 @@ def correct_label_issues(
         )
     ):
         ds_entry["person"] = -1
+    elif tf.reduce_any(
+        tf.equal(
+            ds_entry["image/filename"],
+            verified_depiction_list,
+        )
+    ):
+        if cfg.EXCLUDE_DEPICTION_SKULL_FLAG:
+            ds_entry["person"] = -1
+        else:
+            ds_entry["person"] = 0
     return ds_entry
 
 
