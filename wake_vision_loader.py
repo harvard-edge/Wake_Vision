@@ -152,73 +152,20 @@ def label_person_bbox_labels(ds_entry, person_label_list, cfg=default_cfg):
         )  # Person label that is not a depiction inside crop
     ):
         ds_entry["person"] = 1
-    elif tf.logical_or(
-        tf.logical_and(
-            tf.logical_not(cfg.EXCLUDE_DEPICTION_SKULL_FLAG),
-            tf.logical_or(
-                tf.reduce_any(
-                    list(
-                        tf.logical_and(
-                            tf.equal(
-                                tf.constant(person_label, tf.int64),
-                                ds_entry["bobjects"]["label"],
-                            ),
-                            tf.equal(
-                                tf.constant(0, tf.int8),
-                                ds_entry["bobjects"]["is_depiction"],
-                            ),
-                        )
-                        for person_label in person_label_list
-                    )  # Person label not a depiction (Means that a person label is present outside the crop)
-                ),
-                tf.logical_or(
-                    tf.reduce_any(
-                        list(
-                            check_class_outside_crop(
-                                ds_entry, person_label, depiction=True, cfg=cfg
-                            )
-                            for person_label in person_label_list
-                        )
-                    ),  # Depiction outside crop
-                    tf.reduce_any(
-                        list(
-                            check_class_outside_crop(
-                                ds_entry, skull_label, depiction=False, cfg=cfg
-                            )
-                            for skull_label in cfg.BBOX_SKULL_DICTIONARY.values()
-                        )
-                    ),  # Skull outside crop
-                ),
-            ),
-        ),
-        tf.logical_and(
-            cfg.EXCLUDE_DEPICTION_SKULL_FLAG,
-            tf.logical_or(
-                tf.reduce_any(
-                    list(
-                        tf.equal(
-                            tf.constant(person_label, tf.int64),
-                            ds_entry["bobjects"]["label"],
-                        )
-                        for person_label in person_label_list
-                    )
-                ),  # Person Label (including depictions)
-                tf.reduce_any(
-                    list(
-                        tf.equal(
-                            tf.constant(
-                                skull_label,
-                                tf.int64,
-                            ),
-                            ds_entry["bobjects"]["label"],
-                        )
-                        for skull_label in cfg.BBOX_SKULL_DICTIONARY.values()
-                    )
-                ),  # Skull Label
-            ),
-        ),
+    elif tf.reduce_any(
+        list(
+            check_bbox_label(ds_entry, person_label, cfg=cfg, exclude_outside_crop=False)
+            for person_label in person_label_list
+        )  # Person label that is not a depiction outside crop
     ):
         ds_entry["person"] = -1
+    elif tf.reduce_any(
+        list(
+            check_bbox_label(ds_entry, person_label, cfg=cfg, exclude_depiction=False, exclude_outside_crop=False)
+            for person_label in (person_label_list+list(cfg.BBOX_SKULL_DICTIONARY.values()))
+        ) # Person label that is a depiction or a skull
+    ):
+        ds_entry["person"] = -1 if cfg.EXCLUDE_DEPICTION_SKULL_FLAG else 0
     else:
         ds_entry["person"] = 0
     return ds_entry
@@ -249,38 +196,27 @@ def check_bbox_label(
     ds_entry,
     label_number,
     cfg,
+    exclude_depiction=True,
+    exclude_outside_crop=True,
 ):
     object_present_tensor = tf.equal(
         tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
     )
 
-    # Remove the positive values from object_present_tensor that stem from depictions.
-    non_depiction_tensor = tf.equal(
-        tf.constant(0, tf.int8), ds_entry["bobjects"]["is_depiction"]
-    )
-    object_present_tensor = tf.logical_and(object_present_tensor, non_depiction_tensor)
+    if exclude_depiction:
+        # Remove the positive values from object_present_tensor that stem from depictions.
+        non_depiction_tensor = tf.equal(
+            tf.constant(0, tf.int8), ds_entry["bobjects"]["is_depiction"]
+        )
+        object_present_tensor = tf.logical_and(object_present_tensor, non_depiction_tensor)
 
     if tf.logical_not(tf.reduce_any(object_present_tensor)):
         return False
-
-    bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
-
-    return check_bbox_inside_crop(ds_entry, bounding_boxes, cfg)
-
-
-def check_class_outside_crop(ds_entry, label_number, depiction, cfg):
-    object_present_tensor = tf.equal(
-        tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
-    )
-    if depiction:
-        depiction_tensor = tf.equal(
-            tf.constant(1, tf.int8), ds_entry["bobjects"]["is_depiction"]
-        )
-        object_present_tensor = tf.logical_and(object_present_tensor, depiction_tensor)
-
-    return not check_bbox_inside_crop(
-        ds_entry, ds_entry["bobjects"]["bbox"][object_present_tensor], cfg
-    )
+    elif tf.logical_not(exclude_outside_crop):
+        return True
+    else:
+        bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
+        return check_bbox_inside_crop(ds_entry, bounding_boxes, cfg)
 
 
 def check_bbox_inside_crop(ds_entry, bounding_boxes, cfg):
