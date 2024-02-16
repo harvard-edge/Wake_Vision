@@ -111,29 +111,30 @@ def label_person_image_labels(ds_entry, person_label_list, cfg=default_cfg):
     ):
         ds_entry["person"] = 1
     # If a person related label is present but no person related label has not passed the confidence threshold requirement to be labelled a person, we exclude the image.
-    elif tf.reduce_any(
-        tf.equal(
-            tf.constant(
-                list(person_label for person_label in person_label_list), tf.int64
-            ),
-            ds_entry["objects"]["label"],
-        )
-    ) or (
-        cfg.EXCLUDE_DEPICTION_SKULL_FLAG
-        and tf.reduce_any(
-            tf.equal(
-                (
-                    tf.constant(
-                        list(
-                            skull_label
-                            for skull_label in cfg.IMAGE_LEVEL_SKULL_DICTIONARY.values()
-                        ),
-                        tf.int64,
+    elif tf.logical_or(
+        tf.reduce_any(
+            list(
+                tf.equal(
+                    tf.constant(person_label, tf.int64),
+                    ds_entry["objects"]["label"],
+                )
+                for person_label in person_label_list
+            )
+        ),
+        (
+            tf.logical_and(
+                cfg.EXCLUDE_DEPICTION_SKULL_FLAG,
+                tf.reduce_any(
+                    list(
+                        tf.equal(
+                            tf.constant(skull_label, tf.int64),
+                            ds_entry["objects"]["label"],
+                        )
+                        for skull_label in cfg.IMAGE_LEVEL_SKULL_DICTIONARY.values()
                     )
                 ),
-                ds_entry["objects"]["label"],
             )
-        )
+        ),
     ):
         ds_entry["person"] = -1
     else:
@@ -151,66 +152,71 @@ def label_person_bbox_labels(ds_entry, person_label_list, cfg=default_cfg):
         )  # Person label that is not a depiction inside crop
     ):
         ds_entry["person"] = 1
-    elif (
-        not cfg.EXCLUDE_DEPICTION_SKULL_FLAG
-        and (
-            tf.reduce_any(
-                tf.logical_and(
-                    tf.equal(
-                        tf.constant(
-                            list(person_label for person_label in person_label_list),
-                            tf.int64,
-                        ),
-                        ds_entry["bobjects"]["label"],
-                    ),
-                    tf.equal(
-                        tf.constant(0, tf.int8),
-                        ds_entry["bobjects"]["is_depiction"],
-                    ),
-                )
-            )  # Person label no depiction (Means that a person label is present outside the crop)
-            or tf.reduce_any(
-                list(
-                    check_class_outside_crop(
-                        ds_entry, person_label, depiction=True, cfg=cfg
-                    )
-                    for person_label in person_label_list
-                )
-            )  # Depiction outside crop
-            or tf.reduce_any(
-                list(
-                    check_class_outside_crop(
-                        ds_entry, skull_label, depiction=False, cfg=cfg
-                    )
-                    for skull_label in cfg.BBOX_SKULL_DICTIONARY.values()
-                )
-            )  # Skull outside crop
-        )
-    ) or (
-        cfg.EXCLUDE_DEPICTION_SKULL_FLAG
-        and (
-            tf.reduce_any(
-                tf.equal(
-                    tf.constant(
-                        list(person_label for person_label in person_label_list),
-                        tf.int64,
-                    ),
-                    ds_entry["bobjects"]["label"],
-                )
-            )  # Person Label (including depictions)
-            or tf.reduce_any(
-                tf.equal(
-                    tf.constant(
+    elif tf.logical_or(
+        tf.logical_and(
+            tf.logical_not(cfg.EXCLUDE_DEPICTION_SKULL_FLAG),
+            tf.logical_or(
+                tf.reduce_any(
+                    list(
+                        tf.logical_and(
+                            tf.equal(
+                                tf.constant(person_label, tf.int64),
+                                ds_entry["bobjects"]["label"],
+                            ),
+                            tf.equal(
+                                tf.constant(0, tf.int8),
+                                ds_entry["bobjects"]["is_depiction"],
+                            ),
+                        )
+                        for person_label in person_label_list
+                    )  # Person label not a depiction (Means that a person label is present outside the crop)
+                ),
+                tf.logical_or(
+                    tf.reduce_any(
                         list(
-                            skull_label
+                            check_class_outside_crop(
+                                ds_entry, person_label, depiction=True, cfg=cfg
+                            )
+                            for person_label in person_label_list
+                        )
+                    ),  # Depiction outside crop
+                    tf.reduce_any(
+                        list(
+                            check_class_outside_crop(
+                                ds_entry, skull_label, depiction=False, cfg=cfg
+                            )
                             for skull_label in cfg.BBOX_SKULL_DICTIONARY.values()
-                        ),
-                        tf.int64,
-                    ),
-                    ds_entry["bobjects"]["label"],
-                )
-            )  # Skull Label
-        )
+                        )
+                    ),  # Skull outside crop
+                ),
+            ),
+        ),
+        tf.logical_and(
+            cfg.EXCLUDE_DEPICTION_SKULL_FLAG,
+            tf.logical_or(
+                tf.reduce_any(
+                    list(
+                        tf.equal(
+                            tf.constant(person_label, tf.int64),
+                            ds_entry["bobjects"]["label"],
+                        )
+                        for person_label in person_label_list
+                    )
+                ),  # Person Label (including depictions)
+                tf.reduce_any(
+                    list(
+                        tf.equal(
+                            tf.constant(
+                                skull_label,
+                                tf.int64,
+                            ),
+                            ds_entry["bobjects"]["label"],
+                        )
+                        for skull_label in cfg.BBOX_SKULL_DICTIONARY.values()
+                    )
+                ),  # Skull Label
+            ),
+        ),
     ):
         ds_entry["person"] = -1
     else:
@@ -254,7 +260,7 @@ def check_bbox_label(
     )
     object_present_tensor = tf.logical_and(object_present_tensor, non_depiction_tensor)
 
-    if not tf.reduce_any(object_present_tensor):
+    if tf.logical_not(tf.reduce_any(object_present_tensor)):
         return False
 
     bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
