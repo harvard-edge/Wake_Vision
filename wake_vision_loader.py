@@ -91,12 +91,11 @@ def open_images_to_wv(
     person_ds = ds_split.filter(data_filters.person_filter)
     non_person_ds = ds_split.filter(data_filters.non_person_filter)
 
-    # We now interleave these two datasets with an equal probability of picking an element from each dataset. This should result in a shuffled dataset.
-    # As an added benefit this allows us to shuffle the dataset differently for every epoch using "rerandomize_each_iteration".
-    ds_split = tf.data.Dataset.sample_from_datasets(
-        [person_ds, non_person_ds],
-        stop_on_empty_dataset=True,
-        rerandomize_each_iteration=True,
+    # We now interleave these two datasets to create a dataset that contains both examples of persons and no persons.
+    # Choice dataset is a dataset that determines which dataset to sample from at each iteration. In our case, we want to sample from the person_ds and non_person_ds alternating each iteration.
+    choice_ds = tf.data.Dataset.range(2).repeat()
+    ds_split = tf.data.Dataset.choose_from_datasets(
+        [person_ds, non_person_ds], choice_ds, stop_on_empty_dataset=True
     )
 
     return ds_split
