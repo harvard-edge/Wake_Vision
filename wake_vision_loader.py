@@ -110,7 +110,7 @@ def label_person_image_labels(ds_entry, person_label_list, cfg=default_cfg):
         )
     ):
         ds_entry["person"] = 1
-    # If a person related label is present but no person related label has not passed the confidence threshold requirement to be labelled a person, we exclude the image.
+    # If a person related label is present but no person related label has passed the confidence threshold requirement to be labelled a person, we exclude the image.
     elif tf.logical_or(
         tf.reduce_any(
             list(
@@ -154,16 +154,26 @@ def label_person_bbox_labels(ds_entry, person_label_list, cfg=default_cfg):
         ds_entry["person"] = 1
     elif tf.reduce_any(
         list(
-            check_bbox_label(ds_entry, person_label, cfg=cfg, exclude_outside_crop=False)
+            check_bbox_label(
+                ds_entry, person_label, cfg=cfg, exclude_outside_crop=False
+            )
             for person_label in person_label_list
         )  # Person label that is not a depiction outside crop
     ):
         ds_entry["person"] = -1
     elif tf.reduce_any(
         list(
-            check_bbox_label(ds_entry, person_label, cfg=cfg, exclude_depiction=False, exclude_outside_crop=False)
-            for person_label in (person_label_list+list(cfg.BBOX_SKULL_DICTIONARY.values()))
-        ) # Person label that is a depiction or a skull
+            check_bbox_label(
+                ds_entry,
+                person_label,
+                cfg=cfg,
+                exclude_depiction=False,
+                exclude_outside_crop=False,
+            )
+            for person_label in (
+                person_label_list + list(cfg.BBOX_SKULL_DICTIONARY.values())
+            )
+        )  # Person label that is a depiction or a skull
     ):
         ds_entry["person"] = -1 if cfg.EXCLUDE_DEPICTION_SKULL_FLAG else 0
     else:
@@ -208,7 +218,9 @@ def check_bbox_label(
         non_depiction_tensor = tf.equal(
             tf.constant(0, tf.int8), ds_entry["bobjects"]["is_depiction"]
         )
-        object_present_tensor = tf.logical_and(object_present_tensor, non_depiction_tensor)
+        object_present_tensor = tf.logical_and(
+            object_present_tensor, non_depiction_tensor
+        )
 
     if tf.logical_not(tf.reduce_any(object_present_tensor)):
         return False
