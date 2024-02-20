@@ -158,4 +158,4 @@ if __name__ == "__main__":
     if args.input_size:
         cfg.INPUT_SHAPE = tuple(map(int, args.input_size.split(",")))
 
-    train(cfg)
+    train(cfg, extra_evals=[])
