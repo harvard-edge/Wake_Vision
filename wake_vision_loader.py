@@ -5,7 +5,7 @@ import tensorflow_datasets as tfds
 from experiment_config import default_cfg
 import pp_ops
 import partial_open_images_v7.partial_open_images_v7_dataset_builder
-import finer_grained_evaluation_filters as fgef
+import data_filters
 
 
 # A function to convert the "Train", "Validation" and "Test" parts of open images to their respective wake vision variants.
@@ -88,8 +88,8 @@ def open_images_to_wv(
         )
 
     # Filter the dataset into a part with persons and a part with no persons
-    person_ds = ds_split.filter(person_filter)
-    non_person_ds = ds_split.filter(non_person_filter)
+    person_ds = ds_split.filter(data_filters.person_filter)
+    non_person_ds = ds_split.filter(data_filters.non_person_filter)
 
     # We now interleave these two datasets with an equal probability of picking an element from each dataset. This should result in a shuffled dataset.
     # As an added benefit this allows us to shuffle the dataset differently for every epoch using "rerandomize_each_iteration".
@@ -105,7 +105,7 @@ def open_images_to_wv(
 def label_person_image_labels(ds_entry, person_label_list, cfg=default_cfg):
     if tf.reduce_any(
         list(
-            check_image_level_label(ds_entry, person_label, cfg)
+            data_filters.check_image_level_label(ds_entry, person_label, cfg)
             for person_label in person_label_list
         )
     ):
@@ -147,21 +147,21 @@ def label_person_bbox_labels(ds_entry, person_label_list, cfg=default_cfg):
         ds_entry["person"] = -1
     elif tf.reduce_any(
         list(
-            check_bbox_label(ds_entry, person_label, cfg=cfg)
+            data_filters.check_bbox_label(ds_entry, person_label, cfg=cfg)
             for person_label in person_label_list
         )  # Person label that is not a depiction inside crop
     ):
         ds_entry["person"] = 1
     elif tf.reduce_any(
         list(
-            check_bbox_label(ds_entry, person_label, cfg=cfg, exclude_outside_crop=False)
+            data_filters.check_bbox_label(ds_entry, person_label, cfg=cfg, exclude_outside_crop=False)
             for person_label in person_label_list
         )  # Person label that is not a depiction outside crop
     ):
         ds_entry["person"] = -1
     elif tf.reduce_any(
         list(
-            check_bbox_label(ds_entry, person_label, cfg=cfg, exclude_depiction=False, exclude_outside_crop=False)
+            data_filters.check_bbox_label(ds_entry, person_label, cfg=cfg, exclude_depiction=False, exclude_outside_crop=False)
             for person_label in (person_label_list+list(cfg.BBOX_SKULL_DICTIONARY.values()))
         ) # Person label that is a depiction or a skull
     ):
@@ -169,120 +169,6 @@ def label_person_bbox_labels(ds_entry, person_label_list, cfg=default_cfg):
     else:
         ds_entry["person"] = 0
     return ds_entry
-
-
-# This function checks for the presence of an image level label with at least MIN_IMAGE_LEVEL_CONFIDENCE confidence in the ds_entry.
-def check_image_level_label(ds_entry, label_number, cfg=default_cfg):
-    object_present_tensor = tf.equal(
-        tf.constant(label_number, tf.int64), ds_entry["objects"]["label"]
-    )
-    confidence = ds_entry["objects"]["confidence"][object_present_tensor]
-
-    if tf.size(confidence) == 0:
-        return False
-
-    confident_object_present_tensor = tf.math.greater_equal(
-        confidence, cfg.MIN_IMAGE_LEVEL_CONFIDENCE
-    )
-
-    # If any of the image level labels with label_number are present with a confidence greater than MIN_IMAGE_LEVEL_CONFIDENCE then return True.
-    return_value = tf.reduce_any(confident_object_present_tensor)
-
-    return return_value
-
-
-# This function checks for the presence of a bounding box object occupying a certain size in the ds_entry. Size can be configured in experiment_config.py.
-def check_bbox_label(
-    ds_entry,
-    label_number,
-    cfg,
-    exclude_depiction=True,
-    exclude_outside_crop=True,
-):
-    object_present_tensor = tf.equal(
-        tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
-    )
-
-    if exclude_depiction:
-        # Remove the positive values from object_present_tensor that stem from depictions.
-        non_depiction_tensor = tf.equal(
-            tf.constant(0, tf.int8), ds_entry["bobjects"]["is_depiction"]
-        )
-        object_present_tensor = tf.logical_and(object_present_tensor, non_depiction_tensor)
-
-    if tf.logical_not(tf.reduce_any(object_present_tensor)):
-        return False
-    elif tf.logical_not(exclude_outside_crop):
-        return True
-    else:
-        bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
-        return check_bbox_inside_crop(ds_entry, bounding_boxes, cfg)
-
-
-def check_bbox_inside_crop(ds_entry, bounding_boxes, cfg):
-    return_value = False
-    # crop the bounding box area to the center crop that will happen in preprocessing.
-    orig_image_h = tf.shape(ds_entry["image"])[0]
-    orig_image_w = tf.shape(ds_entry["image"])[1]
-
-    h, w = cfg.INPUT_SHAPE[0], cfg.INPUT_SHAPE[1]
-
-    small_side = tf.minimum(orig_image_h, orig_image_w)
-    scale = h / small_side
-    image_h = tf.cast(tf.cast(orig_image_h, tf.float64) * scale, tf.int32)
-    image_w = tf.cast(tf.cast(orig_image_w, tf.float64) * scale, tf.int32)
-
-    image_h = image_h if image_h > h else h
-    image_w = image_w if image_w > w else w
-
-    dy = (image_h - h) // 2
-    dx = (image_w - w) // 2
-    crop_x_min = tf.cast(dx / image_w, tf.float32)
-    crop_x_max = tf.cast((dx + w) / image_w, tf.float32)
-    crop_y_min = tf.cast(dy / image_h, tf.float32)
-    crop_y_max = tf.cast((dy + h) / image_h, tf.float32)
-
-    for bounding_box in bounding_boxes:
-        # bbox is complete outside of crop
-        if (
-            (bounding_box[0] > crop_y_max)
-            or (bounding_box[2] < crop_y_min)
-            or (bounding_box[1] > crop_x_max)
-            or (bounding_box[3] < crop_x_min)
-        ):
-            continue
-
-        # orig pixel values of bounding box
-        bb_y_min = tf.cast(
-            bounding_box[0] * tf.cast(orig_image_h, tf.float32), tf.int32
-        )
-        bb_x_min = tf.cast(
-            bounding_box[1] * tf.cast(orig_image_w, tf.float32), tf.int32
-        )
-        bb_y_max = tf.cast(
-            bounding_box[2] * tf.cast(orig_image_h, tf.float32), tf.int32
-        )
-        bb_x_max = tf.cast(
-            bounding_box[3] * tf.cast(orig_image_w, tf.float32), tf.int32
-        )
-
-        # rescale to new image size
-        bb_y_min = tf.cast((bb_y_min - dy) / h, tf.float32)
-        bb_x_min = tf.cast((bb_x_min - dx) / w, tf.float32)
-        bb_y_max = tf.cast((bb_y_max - dy) / h, tf.float32)
-        bb_x_max = tf.cast((bb_x_max - dx) / w, tf.float32)
-
-        tmp_bb_y_min = bb_y_min if bounding_box[0] > crop_y_min else 0.0
-        tmp_bb_y_max = bb_y_max if bounding_box[2] < crop_y_max else 1.0
-        tmp_bb_x_min = bb_x_min if bounding_box[1] > crop_x_min else 0.0
-        tmp_bb_x_max = bb_x_max if bounding_box[3] < crop_x_max else 1.0
-
-        bb_effective_height = tmp_bb_y_max - tmp_bb_y_min
-        bb_effective_width = tmp_bb_x_max - tmp_bb_x_min
-
-        if (bb_effective_height * bb_effective_width) > cfg.MIN_BBOX_SIZE:
-            return_value = True
-    return return_value
 
 
 def read_cleanlab_csv(file_path):
@@ -361,14 +247,6 @@ def correct_label_issues(
     return ds_entry
 
 
-def person_filter(ds_entry):
-    return tf.equal(ds_entry["person"], 1)
-
-
-def non_person_filter(ds_entry):
-    return tf.equal(ds_entry["person"], 0)
-
-
 def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
     # Convert values from int8 to float32
     ds_split = ds_split.map(
@@ -431,6 +309,9 @@ def get_wake_vision(cfg=default_cfg, batch_size=None):
 
 
 def get_lighting(cfg=default_cfg, batch_size=None, split="test"):
+    if split != "train" and split != "validation" and split != "test":
+        raise ValueError("Split must be 'train', 'validation, or 'test'")
+    
     batch_size = batch_size or cfg.BATCH_SIZE
     ds = tfds.load(
         "partial_open_images_v7",
@@ -439,15 +320,12 @@ def get_lighting(cfg=default_cfg, batch_size=None, split="test"):
         split=split,
     )
 
-    if split != "train" and split != "validation" and split != "test":
-        raise ValueError("Split must be 'train', 'validation, or 'test'")
-
     wv_ds = open_images_to_wv(ds, split, cfg=cfg)
 
     lighting_ds = {
-        "dark": fgef.get_low_lighting(wv_ds),
-        "normal_light": fgef.get_medium_lighting(wv_ds),
-        "bright": fgef.get_high_lighting(wv_ds),
+        "dark": data_filters.get_low_lighting(wv_ds),
+        "normal_light": data_filters.get_medium_lighting(wv_ds),
+        "bright": data_filters.get_high_lighting(wv_ds),
     }
 
     for key, value in lighting_ds.items():
@@ -457,6 +335,9 @@ def get_lighting(cfg=default_cfg, batch_size=None, split="test"):
 
 
 def get_miaps(cfg=default_cfg, batch_size=None, split="test"):
+    if split != "test" and split != "validation":
+        raise ValueError("split must be 'test' or 'validation'")
+    
     batch_size = batch_size or cfg.BATCH_SIZE
     ds = tfds.load(
         "partial_open_images_v7",
@@ -465,21 +346,18 @@ def get_miaps(cfg=default_cfg, batch_size=None, split="test"):
         split=split,
     )
 
-    if split != "test" and split != "validation":
-        raise ValueError("split must be 'test' or 'validation'")
-
     wv_ds = open_images_to_wv(ds, split, cfg=cfg)
 
     # Create finer grained evaluation sets before preprocessing the dataset.
     miaps = {
-        "female": fgef.get_predominantly_female_set(wv_ds),
-        "male": fgef.get_predominantly_male_set(wv_ds),
-        "gender_unknown": fgef.get_unknown_gender_set(wv_ds),
-        "young": fgef.get_young_set(wv_ds),
-        "middle": fgef.get_middle_set(wv_ds),
-        "older": fgef.get_older_set(wv_ds),
-        "age_unknown": fgef.get_unknown_age_set(wv_ds),
-        "no_person": wv_ds.filter(non_person_filter),
+        "female": data_filters.get_predominantly_female_set(wv_ds),
+        "male": data_filters.get_predominantly_male_set(wv_ds),
+        "gender_unknown": data_filters.get_unknown_gender_set(wv_ds),
+        "young": data_filters.get_young_set(wv_ds),
+        "middle": data_filters.get_middle_set(wv_ds),
+        "older": data_filters.get_older_set(wv_ds),
+        "age_unknown": data_filters.get_unknown_age_set(wv_ds),
+        "no_person": wv_ds.filter(data_filters.non_person_filter),
     }
 
     for key, value in miaps.items():
@@ -490,27 +368,27 @@ def get_miaps(cfg=default_cfg, batch_size=None, split="test"):
 
 # Distance Eval
 def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
+    if split != "test" and split != "validation":
+        raise ValueError("split must be 'test' or 'validation'")
+    
     batch_size = batch_size or cfg.BATCH_SIZE
-    ds_test = tfds.load(
+    ds = tfds.load(
         "partial_open_images_v7",
         data_dir=cfg.WV_DIR,
         shuffle_files=False,
         split=split,
     )
 
-    if split != "test" and split != "validation":
-        raise ValueError("split must be 'test' or 'validation'")
-
-    ds_test = open_images_to_wv(ds_test, split, cfg=cfg)
-    no_person = ds_test.filter(non_person_filter)
-    far = ds_test.filter(
-        lambda ds_entry: fgef.filter_bb_area(ds_entry, cfg.MIN_BBOX_SIZE, 0.1)
+    ds = open_images_to_wv(ds, split, cfg=cfg)
+    no_person = ds.filter(data_filters.non_person_filter)
+    far = ds.filter(
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, cfg.MIN_BBOX_SIZE, 0.1)
     )  # cfg.NEAR_BB_AREA))
-    mid = ds_test.filter(
-        lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.1, 0.3)
+    mid = ds.filter(
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.1, 0.3)
     )  # cfg.MID_BB_AREA))
-    near = ds_test.filter(
-        lambda ds_entry: fgef.filter_bb_area(ds_entry, 0.3, 1.0)
+    near = ds.filter(
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.3, 1.0)
     )  # cfg.FAR_BB_AREA))
 
     no_person = preprocessing(no_person, batch_size, cfg=cfg)
@@ -519,3 +397,33 @@ def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
     near = preprocessing(near, batch_size, cfg=cfg)
 
     return {"far": far, "mid": mid, "near": near, "no_person": no_person}
+
+
+def get_hands_feet_eval(cfg=default_cfg, batch_size=None, split="test"):
+    if split != "test" and split != "validation":
+        raise ValueError("split must be 'test' or 'validation'")
+    
+    batch_size = batch_size or cfg.BATCH_SIZE
+    ds = tfds.load(
+        "partial_open_images_v7",
+        data_dir=cfg.WV_DIR,
+        shuffle_files=False,
+        split=split,
+    )
+    
+    wv_ds = open_images_to_wv(ds, split, cfg=cfg)
+    
+    target_body_parts = ["Human hand", "Human foot"]
+
+    body_part_ds = {body_part_name: preprocessing(
+                    data_filters.get_body_part_set(wv_ds, cfg.BBOX_BODY_PART_DICTIONARY[body_part_name]),
+                    batch_size, cfg=cfg)
+                    for body_part_name 
+                    in target_body_parts}
+    
+    no_person = preprocessing(wv_ds.filter(data_filters.non_person_filter),
+                              batch_size, cfg=cfg)
+    body_part_ds["no_person"] = no_person
+    
+    
+    return body_part_ds
