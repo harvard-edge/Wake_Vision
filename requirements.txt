@@ -1,5 +1,13 @@
-keras
 tensorflow
 tensorflow-datasets
 ml_collections
 pandas
+opencv-python
+jupyter
+qsl 
+keras
+wandb
+pillow
+cleanlab[all]
+datasets
+matplotlib

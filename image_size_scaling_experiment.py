@@ -1,6 +1,6 @@
 from train import train
 from experiment_config import get_cfg
-from distance_val import distance_val
+from distance_eval import distance_eval
 
 ds = "wv"
 
@@ -15,4 +15,3 @@ for image_size in [32, 96, 128, 256, 384]:
     cfg.COUNT_PERSON_SAMPLES_TRAIN = 620029
     print(f"Training {ds} Small {image_size}x{image_size}:")
     train(cfg)
-    distance_val(cfg)

@@ -15,19 +15,27 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from experiment_config import default_cfg, get_cfg
-from wake_vision_loader import get_wake_vision, get_miaps
+from wake_vision_loader import get_wake_vision
 from vww_loader import get_vww
 
 import wandb
 from wandb.keras import WandbMetricsLogger
 
-def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
-    wandb.init(project="wake-vision", name=cfg.EXPERIMENT_NAME, config=cfg)
+
+def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_eval"]):
+    wandb.init(
+        entity="harvard-edge",
+        project="wake-vision",
+        name=cfg.EXPERIMENT_NAME,
+        config=cfg,
+    )
 
     if cfg.TARGET_DS == "vww":
         train, val, test = get_vww(cfg)
-    else:
+    elif cfg.TARGET_DS == "wv":
         train, val, test = get_wake_vision(cfg)
+    else:
+        raise ValueError("Invalid target dataset. Must be either \"vww\" or \"wv\".")
 
     model = keras.applications.MobileNetV2(
         input_shape=cfg.INPUT_SHAPE,
@@ -67,22 +75,25 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
 
     callbacks = [WandbMetricsLogger()]
 
-    #Distance Eval on each epoch
+    # Distance Eval on each epoch
     if "distance_eval" in extra_evals:
         from wake_vision_loader import get_distance_eval
+
         class DistanceEvalCallback(tf.keras.callbacks.Callback):
             def on_epoch_end(self, epoch, logs=None):
                 dist_cfg = cfg.copy_and_resolve_references()
                 dist_cfg.MIN_BBOX_SIZE = 0.05
                 distance_ds = get_distance_eval(dist_cfg, split="validation")
-                print("Distace Eval Results:")
+                print("\nDistace Eval Results:")
                 for name, value in distance_ds.items():
                     result = self.model.evaluate(value, verbose=0)[1]
                     print(f"{name}: {result}")
-                    wandb.log({"epoch/Dist-"+name: result})
-        
+                    wandb.log({"epoch/Dist-" + name: result})
+
         callbacks.append(DistanceEvalCallback())
     if "miap_eval" in extra_evals:
+        from wake_vision_loader import get_miaps
+
         class MIAPEvalCallback(keras.callbacks.Callback):
             def on_epoch_end(self, epoch, logs=None):
                 miaps_validation = get_miaps(cfg, split="validation")
@@ -90,14 +101,30 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
                 for name, value in miaps_validation.items():
                     result = self.model.evaluate(value, verbose=0)[1]
                     print(f"{name}: {result}")
-                    wandb.log({"epoch/MIAPS-"+name: result})
-        
+                    wandb.log({"epoch/MIAPS-" + name: result})
+
         callbacks.append(MIAPEvalCallback())
-    
+
+    if "lighting_eval" in extra_evals:
+        from wake_vision_loader import get_lighting
+
+        class LightingEvalCallback(keras.callbacks.Callback):
+            def on_epoch_end(self, epoch, logs=None):
+                lighting_ds = get_lighting(cfg, split="validation")
+                print("Lighting Eval Results:")
+                for name, value in lighting_ds.items():
+                    result = self.model.evaluate(value, verbose=0)[1]
+                    print(f"{name}: {result}")
+                    wandb.log({"epoch/Lighting-" + name: result})
+
+        callbacks.append(LightingEvalCallback())
 
     # Train for a fixed number of steps, validating every
     model.fit(
-        train, epochs=(cfg.STEPS//cfg.VAL_STEPS), steps_per_epoch=cfg.VAL_STEPS, validation_data=val,
+        train,
+        epochs=(cfg.STEPS // cfg.VAL_STEPS),
+        steps_per_epoch=cfg.VAL_STEPS,
+        validation_data=val,
         callbacks=callbacks,
     )
     score = model.evaluate(test, verbose=1)
@@ -115,18 +142,22 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
 if __name__ == "__main__":
     import argparse
 
-    cfg = get_cfg()
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("--target_ds", type=str, default=cfg.TARGET_DS)
-    parser.add_argument("--model_size", type=float, default=cfg.MODEL_SIZE)
-    parser.add_argument(
-        "--input_size", type=str, default=",".join(map(str, cfg.INPUT_SHAPE))
-    )
+    parser.add_argument("-n", "--experiment_name", type=str)
+    parser.add_argument("-t", "--target_ds", type=str)
+    parser.add_argument("-l", "--label_type", type=str)
+    parser.add_argument("-ms", "--model_size", type=float)
+    parser.add_argument("-is", "--input_size", type=str)
 
     args = parser.parse_args()
-    cfg.TARGET_DS = args.target_ds
-    cfg.MODEL_SIZE = args.model_size
-    cfg.INPUT_SHAPE = tuple(map(int, args.input_size.split(",")))
+    cfg = get_cfg(args.experiment_name)
+    if args.target_ds:
+        cfg.TARGET_DS = args.target_ds
+    if args.label_type:
+        cfg.LABEL_TYPE = args.label_type
+    if args.model_size:
+        cfg.MODEL_SIZE = args.model_size
+    if args.input_size:
+        cfg.INPUT_SHAPE = tuple(map(int, args.input_size.split(",")))
 
-    train(cfg)
+    train(cfg, extra_evals=[])
