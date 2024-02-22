@@ -1,6 +1,7 @@
 """
 Training Script for Wake Vision and Visual Wake Words Datasets
 """
+
 import numpy as np
 import os
 
@@ -35,7 +36,7 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
     elif cfg.TARGET_DS == "wv":
         train, val, test = get_wake_vision(cfg)
     else:
-        raise ValueError("Invalid target dataset. Must be either \"vww\" or \"wv\".")
+        raise ValueError('Invalid target dataset. Must be either "vww" or "wv".')
 
     model = keras.applications.MobileNetV2(
         input_shape=cfg.INPUT_SHAPE,
@@ -80,26 +81,52 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
         from wake_vision_loader import get_distance_eval
 
         class DistanceEvalCallback(tf.keras.callbacks.Callback):
+            def __init__(self):
+                print("Distance Validation Callback On")
+                self.f1_score = tf.keras.metrics.F1Score(threshold=0.5)
+
             def on_epoch_end(self, epoch, logs=None):
                 distance_ds = get_distance_eval(cfg, split="validation")
                 print("\nDistace Eval Results:")
                 for name, value in distance_ds.items():
-                    result = self.model.evaluate(value, verbose=0)[1]
-                    print(f"{name}: {result}")
-                    wandb.log({"epoch/Dist-" + name: result})
+                    predictions = self.model.predict(value, verbose=0)
+                    unbatched_value = value.unbatch()
+                    sparse_true_labels = unbatched_value.map(
+                        lambda x, y: y, num_parallel_calls=tf.data.AUTOTUNE
+                    )
+                    one_hot_true_labels = tf.one_hot(
+                        list(sparse_true_labels.as_numpy_iterator()), 2
+                    )
+                    self.f1_score.update_state(one_hot_true_labels, predictions)
+                    print(f"{name}: {self.f1_score.result()[1]}")
+                    wandb.log({"epoch/Dist-" + name: self.f1_score.result()[1]})
+                    self.f1_score.reset_state()
 
         callbacks.append(DistanceEvalCallback())
     if "miap_eval" in extra_evals:
         from wake_vision_loader import get_miaps
 
         class MIAPEvalCallback(keras.callbacks.Callback):
+            def __init__(self):
+                print("MIAP Validation Callback On")
+                self.f1_score = tf.keras.metrics.F1Score(threshold=0.5)
+
             def on_epoch_end(self, epoch, logs=None):
                 miaps_validation = get_miaps(cfg, split="validation")
                 print("MIAPS Eval Results:")
                 for name, value in miaps_validation.items():
-                    result = self.model.evaluate(value, verbose=0)[1]
-                    print(f"{name}: {result}")
-                    wandb.log({"epoch/MIAPS-" + name: result})
+                    predictions = self.model.predict(value, verbose=0)
+                    unbatched_value = value.unbatch()
+                    sparse_true_labels = unbatched_value.map(
+                        lambda x, y: y, num_parallel_calls=tf.data.AUTOTUNE
+                    )
+                    one_hot_true_labels = tf.one_hot(
+                        list(sparse_true_labels.as_numpy_iterator()), 2
+                    )
+                    self.f1_score.update_state(one_hot_true_labels, predictions)
+                    print(f"{name}: {self.f1_score.result()[1]}")
+                    wandb.log({"epoch/MIAPs-" + name: self.f1_score.result()[1]})
+                    self.f1_score.reset_state()
 
         callbacks.append(MIAPEvalCallback())
 
@@ -107,13 +134,26 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
         from wake_vision_loader import get_lighting
 
         class LightingEvalCallback(keras.callbacks.Callback):
+            def __init__(self):
+                self.f1_score = tf.keras.metrics.F1Score(threshold=0.5)
+                print("Lighting Validation Callback On")
+
             def on_epoch_end(self, epoch, logs=None):
                 lighting_ds = get_lighting(cfg, split="validation")
                 print("Lighting Eval Results:")
                 for name, value in lighting_ds.items():
-                    result = self.model.evaluate(value, verbose=0)[1]
-                    print(f"{name}: {result}")
-                    wandb.log({"epoch/Lighting-" + name: result})
+                    predictions = self.model.predict(value, verbose=0)
+                    unbatched_value = value.unbatch()
+                    sparse_true_labels = unbatched_value.map(
+                        lambda x, y: y, num_parallel_calls=tf.data.AUTOTUNE
+                    )
+                    one_hot_true_labels = tf.one_hot(
+                        list(sparse_true_labels.as_numpy_iterator()), 2
+                    )
+                    self.f1_score.update_state(one_hot_true_labels, predictions)
+                    print(f"{name}: {self.f1_score.result()[1]}")
+                    wandb.log({"epoch/Lighting-" + name: self.f1_score.result()[1]})
+                    self.f1_score.reset_state()
 
         callbacks.append(LightingEvalCallback())
 
@@ -158,4 +198,4 @@ if __name__ == "__main__":
     if args.input_size:
         cfg.INPUT_SHAPE = tuple(map(int, args.input_size.split(",")))
 
-    train(cfg, extra_evals=[])
+    train(cfg, extra_evals=["distance_eval", "miap_eval", "lighting_eval"])
