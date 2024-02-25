@@ -23,9 +23,13 @@ import wandb
 from wandb.keras import WandbMetricsLogger
 
 
-def distill(teacher_config, student_cfg=default_cfg, extra_evals=["distance_eval", "miap_eval"]):
-    wandb.init(project="wake-vision", name=student_cfg.EXPERIMENT_NAME+"_Distill", config=student_cfg)
-
+def distill(teacher_config, student_cfg=default_cfg):
+    wandb.init(
+        entity="harvard-edge",
+        project="wake-vision",
+        name=student_cfg.EXPERIMENT_NAME+"_Distill",
+        config=student_cfg,
+    )
     if student_cfg.TARGET_DS == "vww":
         train, val, test = get_vww(student_cfg)
     else:
@@ -77,17 +81,13 @@ def distill(teacher_config, student_cfg=default_cfg, extra_evals=["distance_eval
                 distillation_loss_fn: Loss function of difference between soft
                     student predictions and soft teacher predictions
                 alpha: weight to student_loss_fn and 1-alpha to distillation_loss_fn
-                temperature: Temperature for softening probability distributions.
-                    Larger temperature gives softer distributions.
             """
             super().compile(optimizer=optimizer, metrics=metrics, **kwargs)
             self.student_loss_fn = student_loss_fn
             self.distillation_loss_fn = distillation_loss_fn
             self.alpha = alpha
 
-        def compute_loss(
-            self, x=None, y=None, y_pred=None, sample_weight=None, allow_empty=False
-        ):
+        def compute_loss(self, x, y, y_pred):
             teacher_pred = teacher(x, training=False)
 
             student_loss = self.student_loss_fn(y, y_pred)
@@ -117,54 +117,11 @@ def distill(teacher_config, student_cfg=default_cfg, extra_evals=["distance_eval
         student_loss_fn=keras.losses.SparseCategoricalCrossentropy(),
         distillation_loss_fn=keras.losses.KLDivergence(),
         alpha=0.0,
-        # run_eagerly=True,
     )
 
     
 
     callbacks = [WandbMetricsLogger()]
-
-    #Distance Eval on each epoch
-    if "distance_eval" in extra_evals:
-        from wake_vision_loader import get_distance_eval
-        class DistanceEvalCallback(keras.callbacks.Callback):
-            def on_epoch_end(self, epoch, logs=None):
-                dist_cfg = student_cfg.copy_and_resolve_references()
-                dist_cfg.MIN_BBOX_SIZE = 0.05
-                distance_ds = get_distance_eval(dist_cfg, split="validation")
-                print("Distace Eval Results:")
-                for name, value in distance_ds.items():
-                    result = self.model.evaluate(value, verbose=0)[1]
-                    print(f"{name}: {result}")
-                    wandb.log({"epoch/Dist-"+name: result})
-        
-        callbacks.append(DistanceEvalCallback())
-    if "miap_eval" in extra_evals:
-        class MIAPEvalCallback(keras.callbacks.Callback):
-            def on_epoch_end(self, epoch, logs=None):
-                miaps_validation = get_miaps(student_cfg, split="validation")
-                print("MIAPS Eval Results:")
-                for name, value in miaps_validation.items():
-                    result = self.model.evaluate(value, verbose=0)[1]
-                    print(f"{name}: {result}")
-                    wandb.log({"epoch/MIAPS-"+name: result})
-        
-        callbacks.append(MIAPEvalCallback())
-
-    # class distillCallback(keras.callbacks.Callback):
-    #     def on_epoch_end(self, epoch, logs=None):
-    #         kl_loss = []
-    #         for batch in val:
-    #             images, _ = batch
-    #             teacher_pred = teacher(images, training=False)
-    #             student_pred = self.model(images, training=False)
-    #             kl_loss.append(keras.losses.KLDivergence()(teacher_pred, student_pred))
-    #         kl_loss = np.mean(kl_loss)
-    #         print(f"KL-Divergence: {kl_loss}")
-    #         wandb.log({"epoch/KL-Divergence": kl_loss})
-    # callbacks.append(distillCallback())
-
-    
 
     # Train for a fixed number of steps, validating every
     distiller.fit(
