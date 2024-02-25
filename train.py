@@ -86,7 +86,9 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
                 self.f1_score = tf.keras.metrics.F1Score(threshold=0.5)
 
             def on_epoch_end(self, epoch, logs=None):
-                distance_ds = get_distance_eval(cfg, split="validation")
+                dist_cfg = cfg.copy_and_resolve_references()
+                dist_cfg.MIN_BBOX_SIZE = 0.05
+                distance_ds = get_distance_eval(dist_cfg, split="validation")
                 print("\nDistace Eval Results:")
                 for name, value in distance_ds.items():
                     predictions = self.model.predict(value, verbose=0)
