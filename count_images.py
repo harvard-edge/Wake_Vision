@@ -52,6 +52,22 @@ def count_hand_foot(cfg, split):
     print("\n\n")
 
 
+def count_depiction(cfg, split):
+    depiction = wake_vision_loader.get_depiction_eval(cfg, batch_size=1, split=split)
+
+    print(f"Depiction {split} split")
+    print(
+        f"Person Depictions: {depiction['depictions_persons'].reduce(0, count_reduce).numpy()}"
+    )
+    print(
+        f"Non-Person Depictions: {depiction['depictions_non_persons'].reduce(0, count_reduce).numpy()}"
+    )
+    print(
+        f"Non-Person Non-Depictions: {depiction['non_person_no_depictions'].reduce(0, count_reduce).numpy()}"
+    )
+    print("\n\n")
+
+
 def count_full_ds(cfg):
     ds = tfds.load(
         "partial_open_images_v7",
@@ -144,3 +160,7 @@ if __name__ == "__main__":
     if args.hand_feet_dataset:
         count_hand_foot(cfg, "validation")
         count_hand_foot(cfg, "test")
+
+    if args.depiction_dataset:
+        count_depiction(cfg, "validation")
+        count_depiction(cfg, "test")
