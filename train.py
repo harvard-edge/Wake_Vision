@@ -146,6 +146,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--label_type", type=str)
     parser.add_argument("-ms", "--model_size", type=float)
     parser.add_argument("-is", "--input_size", type=str)
+    parser.add_argument("-g", "--grayscale", type=bool)
 
     args = parser.parse_args()
     cfg = get_cfg(args.experiment_name)
@@ -157,5 +158,7 @@ if __name__ == "__main__":
         cfg.MODEL_SIZE = args.model_size
     if args.input_size:
         cfg.INPUT_SHAPE = tuple(map(int, args.input_size.split(",")))
+    if args.grayscale:
+        cfg.grayscale = args.grayscale
 
     train(cfg, extra_evals=[])

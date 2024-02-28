@@ -81,3 +81,7 @@ def vww_rename(ds_entry):
 def random_flip_lr(ds_entry):
     ds_entry["image"] = tf.image.random_flip_left_right(ds_entry["image"])
     return ds_entry
+
+def grayscale(ds_entry):
+    ds_entry["image"] = tf.image.rgb_to_grayscale(ds_entry["image"])
+    return ds_entry

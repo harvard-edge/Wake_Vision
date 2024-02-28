@@ -295,4 +295,27 @@ def get_body_part_set(ds, body_part_label_num, cfg=default_cfg):
     # Filter the dataset to only include images with the specified body part
     # and no other body parts in the image
     return ds.filter(lambda ds_entry: body_part_filter(ds_entry, body_part_label_num, other_body_parts, cfg=cfg))
+
+
+def depiction_eval_filter(ds_entry, return_all_depictions=False, return_person_depictions=True):
+    depiction_tensor = tf.equal(
+            tf.constant(1, tf.int8), ds_entry["bobjects"]["is_depiction"]
+        ) # Check if the image contains a depiction
+    if tf.logical_not(tf.reduce_any(depiction_tensor)):
+        return False
     
+    if return_all_depictions:
+        return True
+    
+    # Check if the depiction is of a person
+    depiction_is_person = False
+    for label_number in [68, 227, 307, 332, 50, 176, 501, 291]:
+        object_present_tensor = tf.equal(
+            tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
+        )
+        if tf.reduce_any(tf.logical_and(object_present_tensor, depiction_tensor)):
+            depiction_is_person = True
+    
+    # Return the depictions of people if return_person_depictions is True
+    # or the depictions of non-people if return_person_depictions is False
+    return depiction_is_person == return_person_depictions

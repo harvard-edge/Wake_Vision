@@ -16,6 +16,7 @@ def get_cfg(experiment_name=None):
     cfg.TARGET_DS = "wv"  # Available options are "wv" or "vww"
     cfg.LABEL_TYPE = "bbox"  # Only used for the wake_vision dataset. Specifies whether to use open images image-level labels or bounding boxes. Available options are "image" or "bbox".
     cfg.MIN_BBOX_SIZE = 0.05  # Minimum size of bounding box containing person or subclass for image to be labelled as person. Only works for the wake vision dataset. The visual wake words dataset sets this to 0.05.
+    cfg.grayscale = False
 
     cfg.MODEL_NAME = f"{cfg.TARGET_DS}_mobilenetv1"
 

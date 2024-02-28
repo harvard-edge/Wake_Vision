@@ -283,6 +283,11 @@ def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
         # center crop
         center_crop = lambda ds_entry: pp_ops.center_crop(ds_entry, cfg.INPUT_SHAPE)
         ds_split = ds_split.map(center_crop, num_parallel_calls=tf.data.AUTOTUNE)
+        
+    if cfg.grayscale:
+        ds_split = ds_split.map(
+            pp_ops.grayscale, num_parallel_calls=tf.data.AUTOTUNE
+        )
 
     # Use the official mobilenet preprocessing to normalize images
     ds_split = ds_split.map(
@@ -330,11 +335,18 @@ def get_lighting(cfg=default_cfg, batch_size=None, split="test"):
     )
 
     wv_ds = open_images_to_wv(ds, split, cfg=cfg)
+    
+    #first filter persons and non-persons
+    person = wv_ds.filter(data_filters.person_filter)
+    non_person = wv_ds.filter(data_filters.non_person_filter)
 
     lighting_ds = {
-        "dark": data_filters.get_low_lighting(wv_ds),
-        "normal_light": data_filters.get_medium_lighting(wv_ds),
-        "bright": data_filters.get_high_lighting(wv_ds),
+        "person_dim": data_filters.get_low_lighting(person),
+        "person_normal_light": data_filters.get_medium_lighting(person),
+        "person_bright": data_filters.get_high_lighting(person),
+        "non_person_dim": data_filters.get_low_lighting(non_person),
+        "non_person_normal_light": data_filters.get_medium_lighting(non_person),
+        "non_person_bright": data_filters.get_high_lighting(non_person),
     }
 
     for key, value in lighting_ds.items():
@@ -441,3 +453,45 @@ def get_hands_feet_eval(cfg=default_cfg, batch_size=None, split="test"):
     body_part_ds["no_person"] = no_person
 
     return body_part_ds
+
+def get_depiction_eval(cfg=default_cfg, batch_size=None, split="test"):
+    if split != "test" and split != "validation":
+        raise ValueError("split must be 'test' or 'validation'")
+    batch_size = batch_size or cfg.BATCH_SIZE
+    
+    depiction_cfg = cfg.copy_and_resolve_references()
+    depiction_cfg.EXCLUDE_DEPICTION_SKULL_FLAG = False
+    ds = tfds.load(
+        "partial_open_images_v7",
+        data_dir=cfg.WV_DIR,
+        shuffle_files=False,
+        split=split,
+    )
+    
+    wv_ds = open_images_to_wv(ds, split, cfg=depiction_cfg)
+    
+    #first filter persons and non-persons
+    person = wv_ds.filter(data_filters.person_filter)
+    non_person = wv_ds.filter(data_filters.non_person_filter)
+    
+    #then filter out person and non-person depictions from the non_person set
+    depictions_persons = non_person.filter(lambda ds_entry: 
+                    data_filters.depiction_eval_filter(ds_entry, return_person_depictions=True))
+    depictions_non_persons = non_person.filter(lambda ds_entry: 
+                    data_filters.depiction_eval_filter(ds_entry, return_person_depictions=False))
+    
+    
+    non_person_no_depictions = non_person.filter(lambda ds_entry: 
+                    not data_filters.depiction_eval_filter(ds_entry, return_all_depictions=True))
+    
+    person = preprocessing(person, batch_size, cfg=cfg)
+    depictions_persons = preprocessing(depictions_persons, batch_size, cfg=cfg)
+    depictions_non_persons = preprocessing(depictions_non_persons, batch_size, cfg=cfg)
+    non_person_no_depictions = preprocessing(non_person_no_depictions, batch_size, cfg=cfg)
+    
+    return({"person": person,
+            'depictions_persons': depictions_persons,
+            'depictions_non_persons': depictions_non_persons,
+            'non_person_no_depictions': non_person_no_depictions})
+    
+    
