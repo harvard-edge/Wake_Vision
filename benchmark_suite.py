@@ -17,6 +17,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from wake_vision_loader import get_distance_eval, get_wake_vision, get_lighting, get_miaps, get_hands_feet_eval, get_depiction_eval
+from vww_loader import get_vww
 
 def f1(tp_rate, fp_rate, fn_rate):
     return 2 * tp_rate / (2 * tp_rate + fp_rate + fn_rate)
@@ -146,18 +147,24 @@ def depiction_eval(model, model_cfg):
     return result
 
 
-def benchmark_suite(model_cfg, evals=["test", "distance", "miap", "lighting", "hands_feet", "depiction"]):
+def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting", "hands_feet", "depiction"]):
     model_path = model_cfg.SAVE_FILE
     print("Loading Model:" f"{model_path}")
     model = keras.saving.load_model(model_path)
     
     result = pd.DataFrame({'model': [model_cfg.MODEL_NAME]})
 
-    if "test" in evals:
+    if "wv" in evals:
         _, _, wv_test = get_wake_vision(model_cfg)
         wv_test_score = model.evaluate(wv_test, verbose=0)
         print(f"Wake Vision Test Score: {wv_test_score[1]}")
-        result = pd.concat([result, pd.DataFrame(wv_test_score, index=["wv_test_score"])], axis=1)
+        result = pd.concat([result, pd.DataFrame({"wv_test_score": wv_test_score[1]})], axis=1)
+        
+    if "vww" in evals:
+        _, _, vww_test = get_vww(model_cfg)
+        vww_test_score = model.evaluate(vww_test, verbose=0)
+        print(f"Visual Wake Words Test Score: {vww_test_score[1]}")
+        result = pd.concat([result, pd.DataFrame({"vww_test_score": vww_test_score[1]})], axis=1)
 
     if "distance" in evals:
         dist_results = distance_eval(model, model_cfg)
