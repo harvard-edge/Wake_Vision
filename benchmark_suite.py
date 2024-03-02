@@ -19,6 +19,36 @@ import tensorflow_datasets as tfds
 from wake_vision_loader import get_distance_eval, get_wake_vision, get_lighting, get_miaps, get_hands_feet_eval, get_depiction_eval
 from vww_loader import get_vww
 
+def calc_macs(model):
+    total_macs = 0
+    #calculate the aproximate number of multiply-accumulate operations
+    for layer in model.layers:
+        type = layer.__class__.__name__
+        if type == 'DepthwiseConv2D':
+            in_shape = layer.input.shape
+            filter_shape = layer.get_config()["kernel_size"]
+            out_shape = layer.output.shape
+            macs = out_shape[1] * out_shape[2]* out_shape[3] * filter_shape[0] * filter_shape[1]
+            total_macs += macs
+        elif type == 'Conv2D':
+            in_shape = layer.input.shape
+            filter_shape = layer.get_config()["kernel_size"]
+            out_shape = layer.output.shape
+            macs = out_shape[1] * out_shape[2] * out_shape[3] * in_shape[3] * filter_shape[0] * filter_shape[1]
+            total_macs += macs
+        elif type == 'Dense':
+            in_shape = layer.input.shape
+            out_shape = layer.output.shape 
+            macs = in_shape[1] * out_shape[1]
+            total_macs += macs                 
+    return total_macs
+
+def get_macs(model):
+    result = pd.DataFrame({'macs': [calc_macs(model)]})
+    print(result)
+    return result
+    
+
 def f1(tp_rate, fp_rate, fn_rate):
     return 2 * tp_rate / (2 * tp_rate + fp_rate + fn_rate)
 
@@ -147,7 +177,7 @@ def depiction_eval(model, model_cfg):
     return result
 
 
-def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting", "hands_feet", "depiction"]):
+def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting", "hands_feet", "depiction", "macs"]):
     model_path = model_cfg.SAVE_FILE
     print("Loading Model:" f"{model_path}")
     model = keras.saving.load_model(model_path)
@@ -158,13 +188,13 @@ def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting
         _, _, wv_test = get_wake_vision(model_cfg)
         wv_test_score = model.evaluate(wv_test, verbose=0)
         print(f"Wake Vision Test Score: {wv_test_score[1]}")
-        result = pd.concat([result, pd.DataFrame({"wv_test_score": wv_test_score[1]})], axis=1)
+        result = pd.concat([result, pd.DataFrame({"wv_test_score": [wv_test_score[1]]})], axis=1)
         
     if "vww" in evals:
         _, _, vww_test = get_vww(model_cfg)
         vww_test_score = model.evaluate(vww_test, verbose=0)
         print(f"Visual Wake Words Test Score: {vww_test_score[1]}")
-        result = pd.concat([result, pd.DataFrame({"vww_test_score": vww_test_score[1]})], axis=1)
+        result = pd.concat([result, pd.DataFrame({"vww_test_score": [vww_test_score[1]]})], axis=1)
 
     if "distance" in evals:
         dist_results = distance_eval(model, model_cfg)
@@ -185,6 +215,10 @@ def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting
     if "depiction" in evals:
         depiction_results = depiction_eval(model, model_cfg)
         result = pd.concat([result, depiction_results], axis=1)
+        
+    if "macs" in evals:
+        macs_result = get_macs(model)
+        result = pd.concat([result, macs_result], axis=1)
 
     print("Benchmark Complete")
     print(result)
@@ -200,6 +234,11 @@ if __name__ == "__main__":
     "wv_model_size_0.5_2024_02_24-03_08_14_PM",
     "wv_model_size_1.0_2024_02_25-03_13_21_AM",
     "wv_model_size_1.5_2024_02_25-03_18_41_PM",
+    "wv_small_224x2242024_02_24-07_39_21_AM",
+    "wv_small_192x1922024_02_23-06_06_32_PM",
+    "wv_small_160x1602024_02_23-05_25_53_AM",
+    "wv_small_128x1282024_02_22-10_14_29_AM",
+    "wv_small_96x962024_02_21-06_19_59_PM",
     ]
     results = pd.DataFrame()
     for model in experiment_names:
@@ -212,9 +251,9 @@ if __name__ == "__main__":
         model_cfg.update(load_cfg)
             
 
-        results = pd.concat([results, benchmark_suite(model_cfg)], ignore_index=True)
+        results = pd.concat([results, benchmark_suite(model_cfg, evals=["macs"])], ignore_index=True)
         
     print("All Benchmarking Complete")
     print(results)
     
-    results.to_csv("benchmark_results.csv")
+    results.to_csv("benchmark_results_macs.csv")
