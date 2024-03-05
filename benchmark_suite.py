@@ -182,7 +182,7 @@ def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting
     print("Loading Model:" f"{model_path}")
     model = keras.saving.load_model(model_path)
     
-    result = pd.DataFrame({'model': [model_cfg.MODEL_NAME]})
+    result = pd.DataFrame({'model_name': [model_cfg.MODEL_NAME]})
 
     if "wv" in evals:
         _, _, wv_test = get_wake_vision(model_cfg)
@@ -228,20 +228,44 @@ def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting
 
 if __name__ == "__main__":
     experiment_names = [
-    "wv_model_size_0.1_2024_02_23-02_35_42_AM",
-    "wv_model_size_0.25_2024_02_23-02_22_02_PM",
-    "wv_model_size_0.35_2024_02_24-03_08_17_AM",
-    "wv_model_size_0.5_2024_02_24-03_08_14_PM",
-    "wv_model_size_1.0_2024_02_25-03_13_21_AM",
+    # "image_1.5_long2024_03_04-03_54_13_PM",
+    # "bbox_1.5_long_2024_03_04-03_53_52_PM",
+    "wv_small_256x256_2024_03_04-10_58_34_AM",
+    "wv_model_size_1.5_2024_03_03-11_41_34_PM",
+    "wv_small_224x224_2024_03_03-09_53_43_PM",
+    "wv_model_size_1.0_2024_03_03-10_10_51_AM",
+    "wv_small_192x192_2024_03_03-07_15_34_AM",
+    "wv_model_size_0.5_2024_03_02-10_31_25_PM",
+    "wv_small_160x160_2024_03_02-06_32_44_PM",
+    "wv_model_size_0.35_2024_03_02-10_26_32_AM",
+    "wv_small_128x128_2024_03_02-01_56_12_AM",
+    "wv_small_96x96_2024_03_01-01_27_44_PM",
+    "wv_model_size_0.25_2024_03_01-01_20_49_PM",
+    "wv_model_size_0.1_2024_02_29-09_45_09_PM",
+    "wv_small_64x64_2024_02_29-09_40_58_PM",
+    "grayscale_baseline_2024_02_28-08_12_29_PM",
     "wv_model_size_1.5_2024_02_25-03_18_41_PM",
+    "wv_model_size_1.0_2024_02_25-03_13_21_AM",
+    "wv_model_size_0.5_2024_02_24-03_08_14_PM",
     "wv_small_224x2242024_02_24-07_39_21_AM",
+    "wv_model_size_0.35_2024_02_24-03_08_17_AM",
     "wv_small_192x1922024_02_23-06_06_32_PM",
+    "vww_small_2024_02_23-04_08_49_PM",
+    "wv_model_size_0.25_2024_02_23-02_22_02_PM",
     "wv_small_160x1602024_02_23-05_25_53_AM",
+    "wv_model_size_0.1_2024_02_23-02_35_42_AM",
+    "wv_small_2024_02_23-02_33_35_AM",
+    "wv_small_2024_02_22-10_49_04_PM",
     "wv_small_128x1282024_02_22-10_14_29_AM",
     "wv_small_96x962024_02_21-06_19_59_PM",
     ]
+    already_ran = pd.DataFrame()#pd.read_csv("full_benchmark_results.csv")
+    
+    
     results = pd.DataFrame()
     for model in experiment_names:
+        # if model in already_ran["Experiment ID"].values:
+        #     continue
         print(model)
         model_yaml = "gs://wake-vision-storage/saved_models/" + model + "/config.yaml"
         with tf.io.gfile.GFile(model_yaml, 'r') as fp:
@@ -249,11 +273,16 @@ if __name__ == "__main__":
         load_cfg = config_dict.ConfigDict(load_cfg)
         model_cfg = default_cfg.copy_and_resolve_references()
         model_cfg.update(load_cfg)
-            
+        
+        benchmark_output = benchmark_suite(model_cfg)
+        benchmark_output = pd.concat([pd.DataFrame({"Experiment ID": [model]}, benchmark_output)], axis=1)
 
-        results = pd.concat([results, benchmark_suite(model_cfg, evals=["macs"])], ignore_index=True)
+        results = pd.concat([results, benchmark_output], ignore_index=True)
+        results.to_csv("full_benchmark_results.csv")
         
     print("All Benchmarking Complete")
     print(results)
     
-    results.to_csv("benchmark_results_macs.csv")
+    results = pd.concat([already_ran, results], ignore_index=True)
+    
+    results.to_csv("full_benchmark_results.csv")
