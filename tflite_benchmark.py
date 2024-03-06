@@ -19,7 +19,7 @@ import tensorflow_datasets as tfds
 from wake_vision_loader import get_distance_eval, get_wake_vision, get_lighting, get_miaps, get_hands_feet_eval, get_depiction_eval
 from vww_loader import get_vww
 
-def evaluate(model, ds, batch_size=default_cfg.BATCH_SIZE, verbose=0):
+def evaluate(model, ds, batch_size=1, verbose=0):
     num_correct = 0
     num_batches = 0
     for image, label in ds:
@@ -62,7 +62,7 @@ def distance_eval(model, model_cfg=default_cfg):
     dist_cfg = model_cfg.copy_and_resolve_references()
     dist_cfg.MIN_BBOX_SIZE = 0.05 #ensure we always use the same min bbox size
 
-    distance_ds = get_distance_eval(dist_cfg)
+    distance_ds = get_distance_eval(dist_cfg, batch_size=1)
 
     near_score = evaluate(model, distance_ds["near"], verbose=0)
     mid_score = evaluate(model, distance_ds["mid"], verbose=0)
@@ -162,13 +162,13 @@ def depiction_eval(model, model_cfg=default_cfg):
 def tflite_benchmark_suite(model, evals=["vww", "distance", "miap", "lighting", "hands_feet", "depiction"]):
 
     
-    _, _, wv_test = get_wake_vision()
+    _, _, wv_test = get_wake_vision(batch_size=1)
     wv_test_score = evaluate(model, wv_test, verbose=0)
     print(f"Wake Vision Test Score: {wv_test_score[1]}")
     result = pd.DataFrame({"wv_test_score": [wv_test_score[1]]})
         
     if "vww" in evals:
-        _, _, vww_test = get_vww()
+        _, _, vww_test = get_vww(batch_size=1)
         vww_test_score = evaluate(model, vww_test, verbose=0)
         print(f"Visual Wake Words Test Score: {vww_test_score[1]}")
         result = pd.concat([result, pd.DataFrame({"vww_test_score": [vww_test_score[1]]})], axis=1)

@@ -218,7 +218,11 @@ def filter_bb_area(ds_entry, min_area, max_area, cfg=default_cfg):
     crop_y_min = tf.cast(dy / image_h, tf.float32)
     crop_y_max = tf.cast((dy + h) / image_h, tf.float32)
 
-    for label_number in [68, 227, 307, 332, 50, 176, 501, 291]:
+    bbox_person_label_list = list(cfg.BBOX_PERSON_DICTIONARY.values())
+    if cfg.BODY_PARTS_FLAG:
+        bbox_person_label_list.extend(cfg.BBOX_BODY_PART_DICTIONARY.values())
+        
+    for label_number in bbox_person_label_list:
         object_present_tensor = tf.equal(
             tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
         )
@@ -262,7 +266,7 @@ def filter_bb_area(ds_entry, min_area, max_area, cfg=default_cfg):
             bb_effective_width = tmp_bb_x_max - tmp_bb_x_min
 
             if tf.logical_and(
-                tf.math.greater((bb_effective_height * bb_effective_width), min_area),
+                tf.math.greater_equal((bb_effective_height * bb_effective_width), min_area),
                 tf.math.less((bb_effective_height * bb_effective_width), max_area)
             ):
                 subject_in_range = True

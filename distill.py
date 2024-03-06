@@ -87,7 +87,7 @@ def distill(teacher_config, student_cfg=default_cfg):
             self.distillation_loss_fn = distillation_loss_fn
             self.alpha = alpha
 
-        def compute_loss(self, x, y, y_pred):
+        def compute_loss(self, x, y, y_pred, sample_weight=None, allow_empty=False):
             teacher_pred = teacher(x, training=False)
 
             student_loss = self.student_loss_fn(y, y_pred)
