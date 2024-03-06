@@ -403,13 +403,13 @@ def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
     ds = open_images_to_wv(ds, split, cfg=cfg)
     no_person = ds.filter(data_filters.non_person_filter)
     far = ds.filter(
-        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.001, 0.2)
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.001, 0.1)
     )  # cfg.NEAR_BB_AREA))
     mid = ds.filter(
-        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.2, 0.5)
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.1, 0.6)
     )  # cfg.MID_BB_AREA))
     near = ds.filter(
-        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.5, 100.0)
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.6, 100.0)
     )  # cfg.FAR_BB_AREA))
 
     no_person = preprocessing(no_person, batch_size, cfg=cfg)
