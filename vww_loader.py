@@ -29,6 +29,11 @@ def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
         # center crop
         center_crop = lambda ds_entry: pp_ops.center_crop(ds_entry, cfg.INPUT_SHAPE)
         ds_split = ds_split.map(center_crop, num_parallel_calls=tf.data.AUTOTUNE)
+        
+    if cfg.grayscale:
+        ds_split = ds_split.map(
+            pp_ops.grayscale, num_parallel_calls=tf.data.AUTOTUNE
+        )
 
     # Use the official mobilenet preprocessing to normalize images
     ds_split = ds_split.map(
