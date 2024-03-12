@@ -341,10 +341,10 @@ def get_lighting(cfg=default_cfg, batch_size=None, split="test"):
     non_person = wv_ds.filter(data_filters.non_person_filter)
 
     lighting_ds = {
-        "person_dim": data_filters.get_low_lighting(person),
+        "person_dark": data_filters.get_low_lighting(person),
         "person_normal_light": data_filters.get_medium_lighting(person),
         "person_bright": data_filters.get_high_lighting(person),
-        "non_person_dim": data_filters.get_low_lighting(non_person),
+        "non_person_dark": data_filters.get_low_lighting(non_person),
         "non_person_normal_light": data_filters.get_medium_lighting(non_person),
         "non_person_bright": data_filters.get_high_lighting(non_person),
     }

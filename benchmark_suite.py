@@ -55,20 +55,20 @@ def f1(tp_rate, fp_rate, fn_rate):
 def lighting_eval(model, model_cfg):
     lighting_ds = get_lighting(model_cfg, batch_size=1)
 
-    person_dim_score = model.evaluate(lighting_ds["person_dim"], verbose=0)
+    person_dark_score = model.evaluate(lighting_ds["person_dark"], verbose=0)
     person_normal_light_score = model.evaluate(lighting_ds["person_normal_light"], verbose=0)
     person_bright_score = model.evaluate(lighting_ds["person_bright"], verbose=0)
     
-    non_person_dim_score = model.evaluate(lighting_ds["non_person_dim"], verbose=0)
+    non_person_dark_score = model.evaluate(lighting_ds["non_person_dark"], verbose=0)
     non_person_normal_light_score = model.evaluate(lighting_ds["non_person_normal_light"], verbose=0)
     non_person_bright_score = model.evaluate(lighting_ds["non_person_bright"], verbose=0)
     
-    dim_f1 = f1(person_dim_score[1], 1-non_person_dim_score[1], 1-person_dim_score[1])
+    dark_f1 = f1(person_dark_score[1], 1-non_person_dark_score[1], 1-person_dark_score[1])
     normal_light_f1 = f1(person_normal_light_score[1], 1-non_person_normal_light_score[1], 1-person_normal_light_score[1])
     bright_f1 = f1(person_bright_score[1], 1-non_person_bright_score[1], 1-person_bright_score[1])
     
     result = pd.DataFrame({
-        'lighting-dark': [dim_f1],
+        'lighting-dark': [dark_f1],
         'lighting-normal_light': [normal_light_f1],
         'lighting-bright': [bright_f1]})
 
