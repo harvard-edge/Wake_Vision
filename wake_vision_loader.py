@@ -420,40 +420,6 @@ def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
     return {"far": far, "mid": mid, "near": near, "no_person": no_person}
 
 
-def get_hands_feet_eval(cfg=default_cfg, batch_size=None, split="test"):
-    if split != "test" and split != "validation":
-        raise ValueError("split must be 'test' or 'validation'")
-
-    batch_size = batch_size or cfg.BATCH_SIZE
-    ds = tfds.load(
-        "partial_open_images_v7",
-        data_dir=cfg.WV_DIR,
-        shuffle_files=False,
-        split=split,
-    )
-
-    wv_ds = open_images_to_wv(ds, split, cfg=cfg)
-
-    target_body_parts = ["Human hand", "Human foot"]
-
-    body_part_ds = {
-        body_part_name: preprocessing(
-            data_filters.get_body_part_set(
-                wv_ds, cfg.BBOX_BODY_PART_DICTIONARY[body_part_name]
-            ),
-            batch_size,
-            cfg=cfg,
-        )
-        for body_part_name in target_body_parts
-    }
-
-    no_person = preprocessing(
-        wv_ds.filter(data_filters.non_person_filter), batch_size, cfg=cfg
-    )
-    body_part_ds["no_person"] = no_person
-
-    return body_part_ds
-
 def get_depiction_eval(cfg=default_cfg, batch_size=None, split="test"):
     if split != "test" and split != "validation":
         raise ValueError("split must be 'test' or 'validation'")

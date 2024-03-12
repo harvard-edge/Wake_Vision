@@ -14,7 +14,7 @@ import keras
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from wake_vision_loader import get_distance_eval, get_wake_vision, get_lighting, get_miaps, get_hands_feet_eval, get_depiction_eval
+from wake_vision_loader import get_distance_eval, get_wake_vision, get_lighting, get_miaps, get_depiction_eval
 from vww_loader import get_vww
 
 def evaluate(model, ds, batch_size=1, verbose=0):
@@ -114,26 +114,6 @@ def miap_eval(model, model_cfg=default_cfg):
 
     return result
 
-def hands_feet_eval(model, model_cfg=default_cfg):
-    hands_feet_ds = get_hands_feet_eval(model_cfg, batch_size=1)
-
-    hands_score = evaluate(model, hands_feet_ds["Human hand"], verbose=0)
-    feet_score = evaluate(model, hands_feet_ds["Human foot"], verbose=0)
-    no_person_score = evaluate(model, hands_feet_ds["no_person"], verbose=0)
-    
-    hands_f1 = f1(hands_score[1], 1-no_person_score[1], 1-hands_score[1])
-    feet_f1 = f1(feet_score[1], 1-no_person_score[1], 1-feet_score[1])
-    
-    
-    result = pd.DataFrame({
-        'hands': [hands_f1],
-        'feet': [feet_f1],
-        })
-    
-    print(result)
-
-    return result
-
 def depiction_eval(model, model_cfg=default_cfg):
     depiction_ds = get_depiction_eval(model_cfg, batch_size=1)
 
@@ -157,7 +137,7 @@ def depiction_eval(model, model_cfg=default_cfg):
     return result
 
 
-def tflite_benchmark_suite(model, evals=["vww", "distance", "miap", "lighting", "hands_feet", "depiction"]):
+def tflite_benchmark_suite(model, evals=["vww", "distance", "miap", "lighting", "depiction"]):
 
     
     _, _, wv_test = get_wake_vision(batch_size=1)
@@ -182,10 +162,6 @@ def tflite_benchmark_suite(model, evals=["vww", "distance", "miap", "lighting", 
     if "lighting" in evals:
         lighting_results = lighting_eval(model)
         result = pd.concat([result, lighting_results], axis=1)
-        
-    if "hands_feet" in evals:
-        hands_feet_results = hands_feet_eval(model)
-        result = pd.concat([result, hands_feet_results], axis=1)
         
     if "depiction" in evals:
         depiction_results = depiction_eval(model)
