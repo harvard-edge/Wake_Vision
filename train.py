@@ -25,7 +25,6 @@ from wandb.keras import WandbMetricsLogger
 
 def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_eval"]):
     wandb.init(
-        entity="harvard-edge",
         project="wake-vision",
         name=cfg.EXPERIMENT_NAME,
         config=cfg,

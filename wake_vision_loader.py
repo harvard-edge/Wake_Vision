@@ -70,10 +70,10 @@ def open_images_to_wv(
                 verified_non_person_list,
                 verified_exclude_list,
                 verified_depiction_list,
-            ) = read_cleanlab_csv(f"wv_{split_name}_cleaned.csv")
+            ) = read_cleanlab_csv(f"cleaned_csvs/wv_{split_name}_cleaned.csv")
         except FileNotFoundError:
             raise FileNotFoundError(
-                f"Could not find the file wv_{split_name}_cleaned.csv in the current directory. Please download this file from the github repository, or generate it yourself using the scripts in the cleanlab_cleaning directory"
+                f"Could not find the file wv_{split_name}_cleaned.csv in the cleaned_csvs directory. Please download this file from the github repository, or generate it yourself using the scripts in the cleanlab_cleaning directory"
             )
         ds_split = ds_split.map(
             lambda ds_entry: correct_label_issues(
