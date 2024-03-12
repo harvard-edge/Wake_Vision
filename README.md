@@ -18,7 +18,7 @@ python train.py
 
 You can change the config by passing arguments to the train.py script. For example, to change the experiment name and model size, run the following command:
 ```bash
-python train.py --experiment_name="name" -model_size:0.5
+python train.py --experiment_name="name" --model_size=0.5
 ```
 Alternatively you can change experiment_config.py directly.
 
