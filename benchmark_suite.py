@@ -16,7 +16,7 @@ import keras
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from wake_vision_loader import get_distance_eval, get_wake_vision, get_lighting, get_miaps, get_hands_feet_eval, get_depiction_eval
+from wake_vision_loader import get_distance_eval, get_wake_vision, get_lighting, get_miaps, get_depiction_eval
 from vww_loader import get_vww
 
 def calc_macs(model):
@@ -55,20 +55,20 @@ def f1(tp_rate, fp_rate, fn_rate):
 def lighting_eval(model, model_cfg):
     lighting_ds = get_lighting(model_cfg, batch_size=1)
 
-    person_dim_score = model.evaluate(lighting_ds["person_dim"], verbose=0)
+    person_dark_score = model.evaluate(lighting_ds["person_dark"], verbose=0)
     person_normal_light_score = model.evaluate(lighting_ds["person_normal_light"], verbose=0)
     person_bright_score = model.evaluate(lighting_ds["person_bright"], verbose=0)
     
-    non_person_dim_score = model.evaluate(lighting_ds["non_person_dim"], verbose=0)
+    non_person_dark_score = model.evaluate(lighting_ds["non_person_dark"], verbose=0)
     non_person_normal_light_score = model.evaluate(lighting_ds["non_person_normal_light"], verbose=0)
     non_person_bright_score = model.evaluate(lighting_ds["non_person_bright"], verbose=0)
     
-    dim_f1 = f1(person_dim_score[1], 1-non_person_dim_score[1], 1-person_dim_score[1])
+    dark_f1 = f1(person_dark_score[1], 1-non_person_dark_score[1], 1-person_dark_score[1])
     normal_light_f1 = f1(person_normal_light_score[1], 1-non_person_normal_light_score[1], 1-person_normal_light_score[1])
     bright_f1 = f1(person_bright_score[1], 1-non_person_bright_score[1], 1-person_bright_score[1])
     
     result = pd.DataFrame({
-        'lighting-dark': [dim_f1],
+        'lighting-dark': [dark_f1],
         'lighting-normal_light': [normal_light_f1],
         'lighting-bright': [bright_f1]})
 
@@ -134,25 +134,6 @@ def miap_eval(model, model_cfg):
 
     return result
 
-def hands_feet_eval(model, model_cfg):
-    hands_feet_ds = get_hands_feet_eval(model_cfg, batch_size=1)
-
-    hands_score = model.evaluate(hands_feet_ds["Human hand"], verbose=0)
-    feet_score = model.evaluate(hands_feet_ds["Human foot"], verbose=0)
-    no_person_score = model.evaluate(hands_feet_ds["no_person"], verbose=0)
-    
-    hands_f1 = f1(hands_score[1], 1-no_person_score[1], 1-hands_score[1])
-    feet_f1 = f1(feet_score[1], 1-no_person_score[1], 1-feet_score[1])
-    
-    
-    result = pd.DataFrame({
-        'hands': [hands_f1],
-        'feet': [feet_f1],
-        })
-    
-    print(result)
-
-    return result
 
 def depiction_eval(model, model_cfg):
     depiction_ds = get_depiction_eval(model_cfg, batch_size=1)
@@ -177,7 +158,7 @@ def depiction_eval(model, model_cfg):
     return result
 
 
-def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting", "hands_feet", "depiction", "macs"]):
+def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting", "depiction", "macs"]):
     model_path = model_cfg.SAVE_FILE
     print("Loading Model:" f"{model_path}")
     model = keras.saving.load_model(model_path)
@@ -207,10 +188,6 @@ def benchmark_suite(model_cfg, evals=["wv", "vww", "distance", "miap", "lighting
     if "lighting" in evals:
         lighting_results = lighting_eval(model, model_cfg)
         result = pd.concat([result, lighting_results], axis=1)
-        
-    if "hands_feet" in evals:
-        hands_feet_results = hands_feet_eval(model, model_cfg)
-        result = pd.concat([result, hands_feet_results], axis=1)
         
     if "depiction" in evals:
         depiction_results = depiction_eval(model, model_cfg)

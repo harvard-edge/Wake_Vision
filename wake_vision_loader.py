@@ -70,10 +70,10 @@ def open_images_to_wv(
                 verified_non_person_list,
                 verified_exclude_list,
                 verified_depiction_list,
-            ) = read_cleanlab_csv(f"wv_{split_name}_cleaned.csv")
+            ) = read_cleanlab_csv(f"cleaned_csvs/wv_{split_name}_cleaned.csv")
         except FileNotFoundError:
             raise FileNotFoundError(
-                f"Could not find the file wv_{split_name}_cleaned.csv in the current directory. Please download this file from the github repository, or generate it yourself using the scripts in the cleanlab_cleaning directory"
+                f"Could not find the file wv_{split_name}_cleaned.csv in the cleaned_csvs directory. Please download this file from the github repository, or generate it yourself using the scripts in the cleanlab_cleaning directory"
             )
         ds_split = ds_split.map(
             lambda ds_entry: correct_label_issues(
@@ -341,10 +341,10 @@ def get_lighting(cfg=default_cfg, batch_size=None, split="test"):
     non_person = wv_ds.filter(data_filters.non_person_filter)
 
     lighting_ds = {
-        "person_dim": data_filters.get_low_lighting(person),
+        "person_dark": data_filters.get_low_lighting(person),
         "person_normal_light": data_filters.get_medium_lighting(person),
         "person_bright": data_filters.get_high_lighting(person),
-        "non_person_dim": data_filters.get_low_lighting(non_person),
+        "non_person_dark": data_filters.get_low_lighting(non_person),
         "non_person_normal_light": data_filters.get_medium_lighting(non_person),
         "non_person_bright": data_filters.get_high_lighting(non_person),
     }
@@ -403,13 +403,13 @@ def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
     ds = open_images_to_wv(ds, split, cfg=cfg)
     no_person = ds.filter(data_filters.non_person_filter)
     far = ds.filter(
-        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.001, 0.2)
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.001, 0.1)
     )  # cfg.NEAR_BB_AREA))
     mid = ds.filter(
-        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.2, 0.5)
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.1, 0.6)
     )  # cfg.MID_BB_AREA))
     near = ds.filter(
-        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.5, 100.0)
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.6, 100.0)
     )  # cfg.FAR_BB_AREA))
 
     no_person = preprocessing(no_person, batch_size, cfg=cfg)
@@ -419,40 +419,6 @@ def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
 
     return {"far": far, "mid": mid, "near": near, "no_person": no_person}
 
-
-def get_hands_feet_eval(cfg=default_cfg, batch_size=None, split="test"):
-    if split != "test" and split != "validation":
-        raise ValueError("split must be 'test' or 'validation'")
-
-    batch_size = batch_size or cfg.BATCH_SIZE
-    ds = tfds.load(
-        "partial_open_images_v7",
-        data_dir=cfg.WV_DIR,
-        shuffle_files=False,
-        split=split,
-    )
-
-    wv_ds = open_images_to_wv(ds, split, cfg=cfg)
-
-    target_body_parts = ["Human hand", "Human foot"]
-
-    body_part_ds = {
-        body_part_name: preprocessing(
-            data_filters.get_body_part_set(
-                wv_ds, cfg.BBOX_BODY_PART_DICTIONARY[body_part_name]
-            ),
-            batch_size,
-            cfg=cfg,
-        )
-        for body_part_name in target_body_parts
-    }
-
-    no_person = preprocessing(
-        wv_ds.filter(data_filters.non_person_filter), batch_size, cfg=cfg
-    )
-    body_part_ds["no_person"] = no_person
-
-    return body_part_ds
 
 def get_depiction_eval(cfg=default_cfg, batch_size=None, split="test"):
     if split != "test" and split != "validation":

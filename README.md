@@ -1,12 +1,29 @@
-# VWWv2
-A repository to work on a second edition of the Visual Wake Words Dataset
+# Wake Vision
+Wake Vision is a Dataset for TinyML person detection. This repository contains the code to generate and filter the dataset from [Open Images V7](https://storage.googleapis.com/openimages/web/index.html), as well as code to train and evaluate MobileNetV2 models on the dataset. We also provide a suite of benchmarks to evaluate the performance of a person detection model on challenging subsets.
 
-Currently, the repository contains a script to download the Open Images V4 Dataset and set up a basic vww-2 dataset using TensorFlow Datasets. 
-In addition, the script also trains a basic mobilenet version1 model on this dataset, achieving around 90% accuracy on our runs. 
-The requirements.txt file contains the Python packages required to run the script.
+## Installation
+To install the required packages, run the following command:
+```bash
+pip install -r requirements.txt
+```
 
-The script is resource intensive and will therefore have trouble running in anything but a cloud or high-performance computing machine. 
-When running the script, we reached a maximum RAM consumption of 538 GB, and the disk usage of this repository after running the script was 1.4 TB.
+## Download and build Open Images
+Instructions in partial_open_images_v7/README.md
 
-We experienced several “Connection Reset by Peer” exceptions that caused the script to crash during the Open Images V4 Dataset download. 
-We have yet to find the reason for this, but simply restarting the script when it crashes due to this exception will continue the download.
+## Train a model
+To train a MobileNetV2 model using the base config:
+```bash
+python train.py
+```
+
+You can change the config by passing arguments to the train.py script. For example, to change the experiment name and model size, run the following command:
+```bash
+python train.py --experiment_name="name" --model_size=0.5
+```
+Alternatively you can change experiment_config.py directly.
+
+## Evaluate the model
+To run the benchmark suite:
+```bash
+python benchmark_suite.py
+```

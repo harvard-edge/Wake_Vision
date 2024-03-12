@@ -25,7 +25,6 @@ from wandb.keras import WandbMetricsLogger
 
 def distill(teacher_config, student_cfg=default_cfg):
     wandb.init(
-        entity="harvard-edge",
         project="wake-vision",
         name=student_cfg.EXPERIMENT_NAME+"_Distill",
         config=student_cfg,
