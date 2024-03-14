@@ -87,8 +87,8 @@ def distance_eval(model, model_cfg):
     far_score = model.evaluate(distance_ds["far"], verbose=0)
     no_person_score = model.evaluate(distance_ds["no_person"], verbose=0)
     
-    near_f1 = f1(near_score[1], 1-no_person_score[1], 1-far_score[1])
-    mid_f1 = f1(mid_score[1], 1-no_person_score[1], 1-far_score[1])
+    near_f1 = f1(near_score[1], 1-no_person_score[1], 1-near_score[1])
+    mid_f1 = f1(mid_score[1], 1-no_person_score[1], 1-mid_score[1])
     far_f1 = f1(far_score[1], 1-no_person_score[1], 1-far_score[1])
 
     result = pd.DataFrame({

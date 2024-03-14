@@ -399,23 +399,27 @@ def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
         shuffle_files=False,
         split=split,
     )
-
-    ds = open_images_to_wv(ds, split, cfg=cfg)
+    #ensure smaller subjects are included that originally would have been excluded
+    dist_cfg = cfg.copy_and_resolve_references()
+    dist_cfg.MIN_BBOX_SIZE = 0.001
+    
+    ds = open_images_to_wv(ds, split, cfg=dist_cfg)
     no_person = ds.filter(data_filters.non_person_filter)
-    far = ds.filter(
+    person = ds.filter(data_filters.person_filter)
+    far = person.filter(
         lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.001, 0.1)
-    )  # cfg.NEAR_BB_AREA))
-    mid = ds.filter(
+    )
+    mid = person.filter(
         lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.1, 0.6)
-    )  # cfg.MID_BB_AREA))
-    near = ds.filter(
+    )
+    near = person.filter(
         lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.6, 100.0)
-    )  # cfg.FAR_BB_AREA))
+    )
 
-    no_person = preprocessing(no_person, batch_size, cfg=cfg)
-    far = preprocessing(far, batch_size, cfg=cfg)
-    mid = preprocessing(mid, batch_size, cfg=cfg)
-    near = preprocessing(near, batch_size, cfg=cfg)
+    no_person = preprocessing(no_person, batch_size, cfg=dist_cfg)
+    far = preprocessing(far, batch_size, cfg=dist_cfg)
+    mid = preprocessing(mid, batch_size, cfg=dist_cfg)
+    near = preprocessing(near, batch_size, cfg=dist_cfg)
 
     return {"far": far, "mid": mid, "near": near, "no_person": no_person}
 
