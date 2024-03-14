@@ -256,15 +256,15 @@ if __name__ == "__main__":
         model_cfg = default_cfg.copy_and_resolve_references()
         model_cfg.update(load_cfg)
         
-        benchmark_output = benchmark_suite(model_cfg, evals=["distance"])
+        benchmark_output = benchmark_suite(model_cfg)
         benchmark_output = pd.concat([pd.DataFrame({"Experiment ID": [model]}), benchmark_output], axis=1)
 
         results = pd.concat([results, benchmark_output], ignore_index=True)
-        results.to_csv("wv_vww_benchmark_results_new_dist.csv")
+        results.to_csv("wv_vww_benchmark_results.csv")
         
     print("All Benchmarking Complete")
     print(results)
     
     results = pd.concat([already_ran, results], ignore_index=True)
     
-    results.to_csv("wv_vww_benchmark_results_new_dist.csv")
+    results.to_csv("wv_vww_benchmark_results.csv")
