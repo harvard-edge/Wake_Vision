@@ -106,14 +106,17 @@ def export_dataset(dataset_name, eval, cfg):
             distance_wake_vision = wake_vision_loader.open_images_to_wv(
                 open_images_v7[dataset_name], dataset_name, distance_cfg
             )
+            distance_wake_vision_person = distance_wake_vision.filter(
+                data_filters.person_filter
+            )
 
-            wake_vision_far_persons = distance_wake_vision.filter(
+            wake_vision_far_persons = distance_wake_vision_person.filter(
                 lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.001, 0.1)
             )
-            wake_vision_mid_persons = distance_wake_vision.filter(
+            wake_vision_mid_persons = distance_wake_vision_person.filter(
                 lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.1, 0.6)
             )
-            wake_vision_near_persons = distance_wake_vision.filter(
+            wake_vision_near_persons = distance_wake_vision_person.filter(
                 lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.6, 100.0)
             )
 
@@ -150,7 +153,8 @@ def export_dataset(dataset_name, eval, cfg):
         print("Writing body part information...")
         for image in tqdm(wake_vision_body_parts):
             filename = str(image["image/filename"].numpy())[1:].replace("'", "")
-            image_dictionary[filename]["body_part"] = 1
+            if filename in image_dictionary:
+                image_dictionary[filename]["body_part"] = 1
 
         if eval:
             print("Writing gender MIAPs...")
@@ -213,11 +217,55 @@ def export_dataset(dataset_name, eval, cfg):
 
             for image in tqdm(wake_vision_mid_persons):
                 filename = str(image["image/filename"].numpy())[1:].replace("'", "")
-                image_dictionary[filename]["medium_distance"] = 1
+                if filename in image_dictionary:
+                    image_dictionary[filename]["medium_distance"] = 1
+                else:
+                    image_dictionary[filename] = {
+                        "person": -1,
+                        "depiction": -1,
+                        "body_part": -1,
+                        "predominantly_female": -1,
+                        "predominantly_male": -1,
+                        "gender_unknown": -1,
+                        "young": -1,
+                        "middle_age": -1,
+                        "older": -1,
+                        "near": -1,
+                        "medium_distance": 1,
+                        "far": -1,
+                        "dark": -1,
+                        "normal_lighting": -1,
+                        "bright": -1,
+                        "person_depiction": -1,
+                        "non-person_depiction": -1,
+                        "non-person_non-depiction": -1,
+                    }
 
             for image in tqdm(wake_vision_near_persons):
                 filename = str(image["image/filename"].numpy())[1:].replace("'", "")
-                image_dictionary[filename]["near"] = 1
+                if filename in image_dictionary:
+                    image_dictionary[filename]["near"] = 1
+                else:
+                    image_dictionary[filename] = {
+                        "person": -1,
+                        "depiction": -1,
+                        "body_part": -1,
+                        "predominantly_female": -1,
+                        "predominantly_male": -1,
+                        "gender_unknown": -1,
+                        "young": -1,
+                        "middle_age": -1,
+                        "older": -1,
+                        "near": 1,
+                        "medium_distance": -1,
+                        "far": -1,
+                        "dark": -1,
+                        "normal_lighting": -1,
+                        "bright": -1,
+                        "person_depiction": -1,
+                        "non-person_depiction": -1,
+                        "non-person_non-depiction": -1,
+                    }
 
             print("Writing lighting...")
             for image in tqdm(wake_vision_dark):
