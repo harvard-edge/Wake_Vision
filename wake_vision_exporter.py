@@ -1,5 +1,5 @@
 # Use this script to export wake vision annotations to a csv file
-
+import argparse
 import tensorflow_datasets as tfds
 import csv
 from tqdm import tqdm
@@ -359,17 +359,34 @@ def export_dataset(dataset_name, eval, cfg):
                 )
 
 
-# Export the bbox training set
-export_dataset("train", eval=False, cfg=cfg)
+if __name__ == "__main__":
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument(
+        "-b", "--bbox", action="store_true", help="Export bbox training set"
+    )
+    argparser.add_argument(
+        "-i", "--image", action="store_true", help="Export image training set"
+    )
+    argparser.add_argument(
+        "-v", "--validation", action="store_true", help="Export validation set"
+    )
+    argparser.add_argument("-t", "--test", action="store_true", help="Export test set")
+    args = argparser.parse_args()
 
-# Export the image training set
-image_cfg = get_cfg("image")
-image_cfg.LABEL_TYPE = "image"
-export_dataset("train", eval=False, cfg=image_cfg)
+    # Export the bbox training set
+    if args.bbox:
+        export_dataset("train", eval=False, cfg=cfg)
 
+    # Export the image training set
+    if args.image:
+        image_cfg = get_cfg("image")
+        image_cfg.LABEL_TYPE = "image"
+        export_dataset("train", eval=False, cfg=image_cfg)
 
-# Export the validation set
-export_dataset("validation", eval=True, cfg=cfg)
+    # Export the validation set
+    if args.validation:
+        export_dataset("validation", eval=True, cfg=cfg)
 
-# Export the test set
-export_dataset("test", eval=True, cfg=cfg)
+    # Export the test set
+    if args.test:
+        export_dataset("test", eval=True, cfg=cfg)
