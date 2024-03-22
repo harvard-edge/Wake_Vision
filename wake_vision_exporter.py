@@ -19,7 +19,7 @@ open_images_v7 = tfds.load(
 )
 
 
-def export_dataset(dataset_name, eval, cfg):
+def export_dataset(dataset_name, eval, cfg, extra_name=None):
     # Convert Open Images to Wake Vision
     print(f"Converting Open Images {dataset_name} to Wake Vision...")
     wake_vision = wake_vision_loader.open_images_to_wv(
@@ -328,6 +328,13 @@ def export_dataset(dataset_name, eval, cfg):
                             "normal_lighting", 0
                         ),
                         "bright": image_dictionary[filename].get("bright", 0),
+                        "person_depiction": image_dictionary[filename].get("person_depiction", 0),
+                        "non-person_depiction": image_dictionary[filename].get(
+                            "non-person_depiction", 0
+                        ),
+                        "non-person_non-depiction": image_dictionary[filename].get(
+                            "non-person_non-depiction", 0
+                        ),
                     }
                 )
 
@@ -347,6 +354,8 @@ def export_dataset(dataset_name, eval, cfg):
                 )
     else:
         print(f"Exporting image information to csv...")
+        if extra_name:
+            dataset_name = f"{dataset_name}_{extra_name}"
         with open(f"tmp/wake_vision_{dataset_name}.csv", "w") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
@@ -375,13 +384,13 @@ if __name__ == "__main__":
 
     # Export the bbox training set
     if args.bbox:
-        export_dataset("train", eval=False, cfg=cfg)
+        export_dataset("train", eval=False, cfg=cfg, extra_name="bbox")
 
     # Export the image training set
     if args.image:
         image_cfg = get_cfg("image")
         image_cfg.LABEL_TYPE = "image"
-        export_dataset("train", eval=False, cfg=image_cfg)
+        export_dataset("train", eval=False, cfg=image_cfg, extra_name="image")
 
     # Export the validation set
     if args.validation:
