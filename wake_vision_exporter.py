@@ -101,7 +101,7 @@ def export_dataset(dataset_name, eval, cfg, extra_name=None):
 
             print("Setting up distance filters...")
             distance_cfg = get_cfg("distance")
-            distance_cfg.MIN_BBOX_SIZE = 0.001
+            distance_cfg.MIN_BBOX_SIZE = 0.005
 
             distance_wake_vision = wake_vision_loader.open_images_to_wv(
                 open_images_v7[dataset_name], dataset_name, distance_cfg
@@ -111,7 +111,7 @@ def export_dataset(dataset_name, eval, cfg, extra_name=None):
             )
 
             wake_vision_far_persons = distance_wake_vision_person.filter(
-                lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.001, 0.1)
+                lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.005, 0.1)
             )
             wake_vision_mid_persons = distance_wake_vision_person.filter(
                 lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.1, 0.6)
@@ -328,7 +328,9 @@ def export_dataset(dataset_name, eval, cfg, extra_name=None):
                             "normal_lighting", 0
                         ),
                         "bright": image_dictionary[filename].get("bright", 0),
-                        "person_depiction": image_dictionary[filename].get("person_depiction", 0),
+                        "person_depiction": image_dictionary[filename].get(
+                            "person_depiction", 0
+                        ),
                         "non-person_depiction": image_dictionary[filename].get(
                             "non-person_depiction", 0
                         ),
