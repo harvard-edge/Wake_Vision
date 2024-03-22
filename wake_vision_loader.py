@@ -401,13 +401,13 @@ def get_distance_eval(cfg=default_cfg, batch_size=None, split="test"):
     )
     #ensure smaller subjects are included that originally would have been excluded
     dist_cfg = cfg.copy_and_resolve_references()
-    dist_cfg.MIN_BBOX_SIZE = 0.001
+    dist_cfg.MIN_BBOX_SIZE = 0.005
     
     ds = open_images_to_wv(ds, split, cfg=dist_cfg)
     no_person = ds.filter(data_filters.non_person_filter)
     person = ds.filter(data_filters.person_filter)
     far = person.filter(
-        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.001, 0.1)
+        lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.005, 0.1)
     )
     mid = person.filter(
         lambda ds_entry: data_filters.filter_bb_area(ds_entry, 0.1, 0.6)
