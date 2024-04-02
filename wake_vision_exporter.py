@@ -69,6 +69,7 @@ def export_dataset(dataset_name, eval, cfg, extra_name=None):
                 "young",
                 "middle_age",
                 "older",
+                "age_unknown",
                 "near",
                 "medium_distance",
                 "far",
@@ -318,6 +319,7 @@ def export_dataset(dataset_name, eval, cfg, extra_name=None):
                         "young": image_dictionary[filename].get("young", 0),
                         "middle_age": image_dictionary[filename].get("middle_age", 0),
                         "older": image_dictionary[filename].get("older", 0),
+                        "age_unknown": image_dictionary[filename].get("age_unknown", 0),
                         "near": image_dictionary[filename].get("near", 0),
                         "medium_distance": image_dictionary[filename].get(
                             "medium_distance", 0
