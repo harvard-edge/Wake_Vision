@@ -18,6 +18,7 @@ import tensorflow_datasets as tfds
 from experiment_config import default_cfg, get_cfg
 from wake_vision_loader import get_wake_vision
 from vww_loader import get_vww
+import resnet
 
 import wandb
 from wandb.keras import WandbMetricsLogger
@@ -34,15 +35,43 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
         train, val, test = get_vww(cfg)
     elif cfg.TARGET_DS == "wv":
         train, val, test = get_wake_vision(cfg)
+    elif cfg.TARGET_DS == "wv_tfds":
+        ds= tfds.load(
+        "wake_vision",
+        data_dir=cfg.WV_DIR,
+        shuffle_files=False,
+        )
+        if cfg.LABEL_TYPE == "image":
+            train = ds["train_image"]
+        else:
+            train = ds["train_bbox"]
+        from wake_vision_loader import preprocessing
+        train = preprocessing(train, cfg.BATCH_SIZE, train=True, cfg=cfg)
+        val = preprocessing(ds["validation"], cfg.BATCH_SIZE, train=False, cfg=cfg)
+        test = preprocessing(ds["test"], cfg.BATCH_SIZE, train=False, cfg=cfg)
+        
     else:
         raise ValueError('Invalid target dataset. Must be either "vww" or "wv".')
 
-    model = keras.applications.MobileNetV2(
-        input_shape=cfg.INPUT_SHAPE,
-        alpha=cfg.MODEL_SIZE,
-        weights=None,
-        classes=cfg.NUM_CLASSES,
-    )
+
+    if cfg.MODEL == "resnet_mlperf":
+        model = resnet.resnet_mlperf(
+            input_shape=cfg.INPUT_SHAPE,
+            classes=cfg.NUM_CLASSES,
+        )
+    elif cfg.MODEL == "resnet152":
+        model = resnet.ResNet152(
+            input_shape=cfg.INPUT_SHAPE,
+            weights=None,
+            classes=cfg.NUM_CLASSES,
+        )
+    else:
+        model = keras.applications.MobileNetV2(
+            input_shape=cfg.INPUT_SHAPE,
+            alpha=cfg.MODEL_SIZE,
+            weights=None,
+            classes=cfg.NUM_CLASSES,
+        )
 
     """
     Here's our model summary:
@@ -188,9 +217,11 @@ if __name__ == "__main__":
     parser.add_argument("-ms", "--model_size", type=float)
     parser.add_argument("-is", "--input_size", type=str)
     parser.add_argument("-g", "--grayscale", type=bool)
+    parser.add_argument("-m", "--model", type=str)
+    
 
     args = parser.parse_args()
-    cfg = get_cfg(args.experiment_name)
+    cfg = get_cfg(args.experiment_name, args.model)
     if args.target_ds:
         cfg.TARGET_DS = args.target_ds
     if args.label_type:
@@ -202,4 +233,4 @@ if __name__ == "__main__":
     if args.grayscale:
         cfg.grayscale = args.grayscale
 
-    train(cfg, extra_evals=["distance_eval", "miap_eval", "lighting_eval"])
+    train(cfg, extra_evals=[])

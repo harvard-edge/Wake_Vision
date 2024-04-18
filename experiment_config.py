@@ -2,7 +2,7 @@ import time
 from ml_collections import config_dict
 
 
-def get_cfg(experiment_name=None):
+def get_cfg(experiment_name=None, model=None):
     cfg = config_dict.ConfigDict()
 
     cfg.BUCKET_NAME = "gs://wake-vision-storage/"
@@ -13,12 +13,16 @@ def get_cfg(experiment_name=None):
         else cfg.EXPERIMENT_TIME
     )
 
-    cfg.TARGET_DS = "wv"  # Available options are "wv" or "vww"
+    cfg.TARGET_DS = "wv_tfds"  # Available options are "wv" or "vww"
     cfg.LABEL_TYPE = "bbox"  # Only used for the wake_vision dataset. Specifies whether to use open images image-level labels or bounding boxes. Available options are "image" or "bbox".
     cfg.MIN_BBOX_SIZE = 0.05  # Minimum size of bounding box containing person or subclass for image to be labelled as person. Only works for the wake vision dataset. The visual wake words dataset sets this to 0.005.
     cfg.grayscale = False
-
-    cfg.MODEL_NAME = f"{cfg.TARGET_DS}_mobilenetv2"
+    
+    if model:
+        cfg.MODEL = model
+    else:
+        cfg.MODEL = "mobilenetv2"  # Available options are "resnet_mlperf", "resnet152", or "mobilenetv2"
+    cfg.MODEL_NAME = f"{cfg.TARGET_DS}_{cfg.MODEL}"
 
     cfg.WV_DIR = f"{cfg.BUCKET_NAME}tensorflow_datasets"
     cfg.VWW_DIR = f"{cfg.BUCKET_NAME}vww"
