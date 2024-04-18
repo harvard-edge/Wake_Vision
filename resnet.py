@@ -5,7 +5,6 @@ from keras.layers import Conv2D, AveragePooling2D, MaxPooling2D
 from keras.regularizers import l2
 import numpy as np
 
-ResNet152 = keras.applications.ResNet152
 
 def resnet_mlperf(input_shape, num_classes):
     # Resnet parameters

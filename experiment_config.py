@@ -105,7 +105,7 @@ def get_cfg(experiment_name=None, model=None):
     cfg.MODEL_SIZE = 0.25
 
     # Train Config
-    cfg.STEPS = (10**5) * 2
+    cfg.STEPS = (10**5)
     cfg.VAL_STEPS = cfg.STEPS // 20
     cfg.BATCH_SIZE = 128
 

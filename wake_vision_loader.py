@@ -305,19 +305,21 @@ def preprocessing(ds_split, batch_size, train=False, cfg=default_cfg):
 
 def get_wake_vision(cfg=default_cfg, batch_size=None):
     batch_size = batch_size or cfg.BATCH_SIZE
-    ds = tfds.load(
+    ds_train, ds_val, ds_test = tfds.load(
         "partial_open_images_v7",
         data_dir=cfg.WV_DIR,
         shuffle_files=False,
+        split=["train", "validation", "test"],
     )
+    
 
-    ds["train"] = open_images_to_wv(ds["train"], "train", cfg=cfg)
-    ds["validation"] = open_images_to_wv(ds["validation"], "validation", cfg=cfg)
-    ds["test"] = open_images_to_wv(ds["test"], "test", cfg=cfg)
+    ds_train = open_images_to_wv(ds_train, "train", cfg=cfg)
+    ds_val = open_images_to_wv(ds_val, "validation", cfg=cfg)
+    ds_test = open_images_to_wv(ds_test, "test", cfg=cfg)
 
-    train = preprocessing(ds["train"], batch_size, train=True, cfg=cfg)
-    val = preprocessing(ds["validation"], batch_size, cfg=cfg)
-    test = preprocessing(ds["test"], batch_size, cfg=cfg)
+    train = preprocessing(ds_train, batch_size, train=True, cfg=cfg)
+    val = preprocessing(ds_val, batch_size, cfg=cfg)
+    test = preprocessing(ds_test, batch_size, cfg=cfg)
 
     return train, val, test
 

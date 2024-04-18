@@ -59,8 +59,14 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
             input_shape=cfg.INPUT_SHAPE,
             classes=cfg.NUM_CLASSES,
         )
-    elif cfg.MODEL == "resnet152":
-        model = resnet.ResNet152(
+    elif cfg.MODEL == "resnet50":
+        model = keras.applications.ResNet50(
+            input_shape=cfg.INPUT_SHAPE,
+            weights=None,
+            classes=cfg.NUM_CLASSES,
+        )
+    elif cfg.MODEL == "resnet101":
+        model = keras.applications.ResNet101(
             input_shape=cfg.INPUT_SHAPE,
             weights=None,
             classes=cfg.NUM_CLASSES,
