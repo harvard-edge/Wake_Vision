@@ -57,7 +57,7 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
     if cfg.MODEL == "resnet_mlperf":
         model = resnet.resnet_mlperf(
             input_shape=cfg.INPUT_SHAPE,
-            classes=cfg.NUM_CLASSES,
+            num_classes=cfg.NUM_CLASSES,
         )
     elif cfg.MODEL == "resnet50":
         model = keras.applications.ResNet50(
@@ -224,6 +224,7 @@ if __name__ == "__main__":
     parser.add_argument("-is", "--input_size", type=str)
     parser.add_argument("-g", "--grayscale", type=bool)
     parser.add_argument("-m", "--model", type=str)
+    parser.add_argument("-lr", "--lr", type=float)
     
 
     args = parser.parse_args()
@@ -238,5 +239,7 @@ if __name__ == "__main__":
         cfg.INPUT_SHAPE = tuple(map(int, args.input_size.split(",")))
     if args.grayscale:
         cfg.grayscale = args.grayscale
+    if args.lr:
+        cfg.LR = args.lr
 
     train(cfg, extra_evals=[])
