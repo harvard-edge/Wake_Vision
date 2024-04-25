@@ -5,7 +5,7 @@ from ml_collections import config_dict
 def get_cfg(experiment_name=None, model=None):
     cfg = config_dict.ConfigDict()
 
-    cfg.BUCKET_NAME = "gs://wake-vision-storage/"
+    cfg.BUCKET_NAME = "gs://wake-vision-storage-2/"
     cfg.EXPERIMENT_TIME = time.strftime("%Y_%m_%d-%I_%M_%S_%p")
     cfg.EXPERIMENT_NAME = (
         experiment_name + "_" + cfg.EXPERIMENT_TIME
@@ -105,12 +105,14 @@ def get_cfg(experiment_name=None, model=None):
     cfg.MODEL_SIZE = 0.25
 
     # Train Config
-    cfg.STEPS = (10**5)
+    cfg.BATCH_SIZE = 512
+    scale_factor = cfg.BATCH_SIZE // 128
+    
+    cfg.STEPS = (10**5) // scale_factor
     cfg.VAL_STEPS = cfg.STEPS // 20
-    cfg.BATCH_SIZE = 128
 
     # Learning Rate Config
-    cfg.INIT_LR = 0.00001
+    cfg.INIT_LR = 0.00001 * scale_factor
     cfg.WARMUP_STEPS = 10**3
     cfg.LR = 0.002
     cfg.DECAY_STEPS = cfg.STEPS - cfg.WARMUP_STEPS
