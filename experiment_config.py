@@ -121,6 +121,9 @@ def get_cfg(experiment_name=None, model=None):
     cfg.WEIGHT_DECAY = 0.000004
 
     cfg.SHUFFLE_BUFFER_SIZE = 1000
+    
+    # Injected Error Rate
+    cfg.ERROR_RATE = 0.0
 
     return cfg
 

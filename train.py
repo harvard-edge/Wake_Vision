@@ -45,6 +45,12 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
             train = ds["train_image"]
         else:
             train = ds["train_bbox"]
+        if cfg.ERROR_RATE:
+            from pp_ops import inject_label_errors
+            print("Injecting Label Errors at Rate:", cfg.ERROR_RATE)
+            error_func = lambda ds_entry: (inject_label_errors(ds_entry, cfg.ERROR_RATE))
+            train = train.map(error_func, num_parallel_calls=tf.data.AUTOTUNE)
+            
         from wake_vision_loader import preprocessing
         train = preprocessing(train, cfg.BATCH_SIZE, train=True, cfg=cfg)
         val = preprocessing(ds["validation"], cfg.BATCH_SIZE, train=False, cfg=cfg)
@@ -52,7 +58,6 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
         
     else:
         raise ValueError('Invalid target dataset. Must be either "vww" or "wv".')
-
 
     if cfg.MODEL == "resnet_mlperf":
         model = resnet.resnet_mlperf(
@@ -225,6 +230,7 @@ if __name__ == "__main__":
     parser.add_argument("-g", "--grayscale", type=bool)
     parser.add_argument("-m", "--model", type=str)
     parser.add_argument("-lr", "--lr", type=float)
+    parser.add_argument("-e", "--error_rate", type=float)
     
 
     args = parser.parse_args()
@@ -241,5 +247,7 @@ if __name__ == "__main__":
         cfg.grayscale = args.grayscale
     if args.lr:
         cfg.LR = args.lr
+    if args.error_rate:
+        cfg.ERROR_RATE = args.error_rate
 
     train(cfg, extra_evals=[])

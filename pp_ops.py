@@ -85,3 +85,12 @@ def random_flip_lr(ds_entry):
 def grayscale(ds_entry):
     ds_entry["image"] = tf.image.rgb_to_grayscale(ds_entry["image"])
     return ds_entry
+
+def inject_label_errors(ds_entry, error_rate):
+    # Randomly flip the label with probability `error_rate`.
+    ds_entry['person'] = tf.cond(
+        tf.random.uniform([], minval=0.0, maxval=1.0) < error_rate,
+        lambda: tf.constant(1, tf.int64) if ds_entry['person'] == 0 else tf.constant(0, tf.int64),
+        lambda: ds_entry['person'],
+    )
+    return ds_entry
