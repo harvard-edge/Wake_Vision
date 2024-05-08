@@ -36,15 +36,21 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
     elif cfg.TARGET_DS == "wv":
         train, val, test = get_wake_vision(cfg)
     elif cfg.TARGET_DS == "wv_tfds":
-        ds= tfds.load(
+        if cfg.LABEL_TYPE == "image":
+            train_split = "train_image"
+        else:
+            train_split = "train_bbox"
+            
+        if cfg.TRAIN_PERCENTAGE:
+            train_split = f"{train_split}[0:{cfg.TRAIN_PERCENTAGE}%]"
+        
+        train, val, test = tfds.load(
         "wake_vision",
         data_dir=cfg.WV_DIR,
         shuffle_files=False,
+        split=[train_split, "validation", "test"],
         )
-        if cfg.LABEL_TYPE == "image":
-            train = ds["train_image"]
-        else:
-            train = ds["train_bbox"]
+            
         if cfg.ERROR_RATE:
             from pp_ops import inject_label_errors
             print("Injecting Label Errors at Rate:", cfg.ERROR_RATE)
@@ -53,8 +59,8 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
             
         from wake_vision_loader import preprocessing
         train = preprocessing(train, cfg.BATCH_SIZE, train=True, cfg=cfg)
-        val = preprocessing(ds["validation"], cfg.BATCH_SIZE, train=False, cfg=cfg)
-        test = preprocessing(ds["test"], cfg.BATCH_SIZE, train=False, cfg=cfg)
+        val = preprocessing(val, cfg.BATCH_SIZE, train=False, cfg=cfg)
+        test = preprocessing(test, cfg.BATCH_SIZE, train=False, cfg=cfg)
         
     else:
         raise ValueError('Invalid target dataset. Must be either "vww" or "wv".')
@@ -231,6 +237,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--model", type=str)
     parser.add_argument("-lr", "--lr", type=float)
     parser.add_argument("-e", "--error_rate", type=float)
+    parser.add_argument("-p", "--dataset_percentage", type=int)
     
 
     args = parser.parse_args()
@@ -249,5 +256,7 @@ if __name__ == "__main__":
         cfg.LR = args.lr
     if args.error_rate:
         cfg.ERROR_RATE = args.error_rate
+    if args.dataset_percentage:
+        cfg.TRAIN_PERCENTAGE = args.dataset_percentage
 
     train(cfg, extra_evals=[])

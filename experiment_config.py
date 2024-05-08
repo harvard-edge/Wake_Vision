@@ -124,6 +124,9 @@ def get_cfg(experiment_name=None, model=None):
     
     # Injected Error Rate
     cfg.ERROR_RATE = 0.0
+    
+    # Dataset Percentage (None for full dataset)
+    cfg.TRAIN_PERCENTAGE = None
 
     return cfg
 
