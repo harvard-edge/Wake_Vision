@@ -162,6 +162,82 @@ def resnet_mlperf(input_shape, num_classes):
     return model
 
 
+def handle_block_names(stage, block):
+    name_base = 'stage{}_unit{}_'.format(stage + 1, block + 1)
+    conv_name = name_base + 'conv'
+    bn_name = name_base + 'bn'
+    relu_name = name_base + 'relu'
+    sc_name = name_base + 'sc'
+    return conv_name, bn_name, relu_name, sc_name
+
+def get_conv_params(**params):
+    default_conv_params = {
+        'kernel_initializer': 'he_uniform',
+        'use_bias': False,
+        'padding': 'valid',
+    }
+    default_conv_params.update(params)
+    return default_conv_params
+
+
+def get_bn_params(**params):
+    default_bn_params = {
+        'momentum': 0.99,
+        'epsilon': 2e-5,
+        'center': True,
+        'scale': True,
+    }
+    default_bn_params.update(params)
+    return default_bn_params
+
+def ResidualBlock(filters, stage, block, strides=(1, 1), cut='pre'):
+    """The identity block is the block that has no conv layer at shortcut.
+    # Arguments
+        input_tensor: input tensor
+        kernel_size: default 3, the kernel size of
+            middle conv layer at main path
+        filters: list of integers, the filters of 3 conv layer at main path
+        stage: integer, current stage label, used for generating layer names
+        block: 'a','b'..., current block label, used for generating layer names
+        cut: one of 'pre', 'post'. used to decide where skip connection is taken
+    # Returns
+        Output tensor for the block.
+    """
+
+    def layer(input_tensor):
+
+        # get params and names of layers
+        conv_params = get_conv_params()
+        bn_params = get_bn_params()
+        conv_name, bn_name, relu_name, sc_name = handle_block_names(stage, block)
+
+        x = keras.layers.BatchNormalization(name=bn_name + '1', **bn_params)(input_tensor)
+        x = keras.layers.Activation('relu', name=relu_name + '1')(x)
+
+        # defining shortcut connection
+        if cut == 'pre':
+            shortcut = input_tensor
+        elif cut == 'post':
+            shortcut = keras.layers.Conv2D(filters, (1, 1), name=sc_name, strides=strides, **conv_params)(x)
+        else:
+            raise ValueError('Cut type not in ["pre", "post"]')
+
+        # continue with convolution layers
+        x = keras.layers.ZeroPadding2D(padding=(1, 1))(x)
+        x = keras.layers.Conv2D(filters, (3, 3), strides=strides, name=conv_name + '1', **conv_params)(x)
+
+        x = keras.layers.BatchNormalization(name=bn_name + '2', **bn_params)(x)
+        x = keras.layers.Activation('relu', name=relu_name + '2')(x)
+        x = keras.layers.ZeroPadding2D(padding=(1, 1))(x)
+        x = keras.layers.Conv2D(filters, (3, 3), name=conv_name + '2', **conv_params)(x)
+
+        # add residual connection
+        x = keras.layers.Add()([x, shortcut])
+        return x
+
+    return layer
+
+
 def resnet_builder(input_shape, num_classes, layers=[2,2,2,2]):
     
     inputs = Input(shape=input_shape)
@@ -185,15 +261,15 @@ def resnet_builder(input_shape, num_classes, layers=[2,2,2,2]):
             # first block of first stage without strides because we have maxpooling before
             if block == 0 and stage == 0:
                 x = ResidualBlock(filters, stage, block, strides=(1, 1),
-                                  cut='post', attention=Attention)(x)
+                                  cut='post')(x)
 
             elif block == 0:
                 x = ResidualBlock(filters, stage, block, strides=(2, 2),
-                                  cut='post', attention=Attention)(x)
+                                  cut='post')(x)
 
             else:
                 x = ResidualBlock(filters, stage, block, strides=(1, 1),
-                                  cut='pre', attention=Attention)(x)
+                                  cut='pre')(x)
 
     x = keras.layers.BatchNormalization(name='bn1')(x)
     x = keras.layers.Activation('relu', name='relu1')(x)

@@ -21,7 +21,6 @@ from vww_loader import get_vww
 import resnet
 
 import wandb
-from wandb.keras import WandbMetricsLogger
 
 
 def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_eval"]):
@@ -67,6 +66,16 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
 
     if cfg.MODEL == "resnet_mlperf":
         model = resnet.resnet_mlperf(
+            input_shape=cfg.INPUT_SHAPE,
+            num_classes=cfg.NUM_CLASSES,
+        )
+    elif cfg.MODEL == "resnet18":
+        model = resnet.resnet18(
+            input_shape=cfg.INPUT_SHAPE,
+            num_classes=cfg.NUM_CLASSES,
+        )
+    elif cfg.MODEL == "resnet34":
+        model = resnet.resnet34(
             input_shape=cfg.INPUT_SHAPE,
             num_classes=cfg.NUM_CLASSES,
         )
@@ -119,7 +128,7 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
         ],
     )
 
-    callbacks = [WandbMetricsLogger()]
+    callbacks = [wandb.keras.WandbMetricsLogger()]
 
     # Distance Eval on each epoch
     if "distance_eval" in extra_evals:
