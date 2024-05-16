@@ -108,7 +108,7 @@ def get_cfg(experiment_name=None, model=None):
     cfg.BATCH_SIZE = 512
     scale_factor = cfg.BATCH_SIZE // 128
     
-    cfg.STEPS = 2* (10**5) // scale_factor 
+    cfg.STEPS = (10**5) // scale_factor 
     cfg.VAL_STEPS = cfg.STEPS // 20
 
     # Learning Rate Config
