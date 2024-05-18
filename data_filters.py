@@ -226,6 +226,13 @@ def filter_bb_area(ds_entry, min_area, max_area, cfg=default_cfg):
         object_present_tensor = tf.equal(
             tf.constant(label_number, tf.int64), ds_entry["bobjects"]["label"]
         )
+        
+        # Remove the positive values from object_present_tensor that stem from depictions.
+        non_depiction_tensor = tf.equal(
+            tf.constant(0, tf.int8), ds_entry["bobjects"]["is_depiction"]
+        )
+        object_present_tensor = tf.logical_and(object_present_tensor, non_depiction_tensor)
+        
         bounding_boxes = ds_entry["bobjects"]["bbox"][object_present_tensor]
         for bounding_box in bounding_boxes:
             # bbox is complete outside of crop
