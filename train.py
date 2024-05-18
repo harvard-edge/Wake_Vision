@@ -58,10 +58,10 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
             
         from wake_vision_loader import preprocessing
         train = preprocessing(train, cfg.BATCH_SIZE, train=True, cfg=cfg)
-        val = preprocessing(val, cfg.BATCH_SIZE, train=False, cfg=cfg)
         val = val.filter(lambda x: x['person'] >= 0) #Filter out far set images
-        test = preprocessing(test, cfg.BATCH_SIZE, train=False, cfg=cfg)
+        val = preprocessing(val, cfg.BATCH_SIZE, train=False, cfg=cfg)
         test = test.filter(lambda x: x['person'] >= 0) #Filter out far set images
+        test = preprocessing(test, cfg.BATCH_SIZE, train=False, cfg=cfg)
         
     else:
         raise ValueError('Invalid target dataset. Must be either "vww" or "wv".')
