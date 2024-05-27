@@ -118,7 +118,7 @@ def get_cfg(experiment_name=None, model=None, steps=None):
     cfg.DECAY_STEPS = cfg.STEPS - cfg.WARMUP_STEPS
 
     # Weight Decay Config
-    cfg.WEIGHT_DECAY = 0.000004
+    cfg.WEIGHT_DECAY = 0.004
 
     cfg.SHUFFLE_BUFFER_SIZE = 1000
     
