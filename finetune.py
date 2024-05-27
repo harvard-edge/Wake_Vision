@@ -23,7 +23,7 @@ import resnet
 import wandb
 
 
-def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_eval"]):
+def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_eval"], base_model=None):
     wandb.init(
         project="wake-vision",
         name=cfg.EXPERIMENT_NAME,
@@ -65,8 +65,16 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
         
     else:
         raise ValueError('Invalid target dataset. Must be either "vww" or "wv".')
+    
+    if base_model: 
+        import yaml
+        model_yaml = "gs://wake-vision-storage-2/saved_models/" + base_model + "/config.yaml"
+        with tf.io.gfile.GFile(model_yaml, 'r') as fp:
+            base_model_cfg = yaml.unsafe_load(fp)
+        model_path = base_model_cfg.SAVE_FILE
+        model = keras.saving.load_model(model_path)
 
-    if cfg.MODEL == "resnet_mlperf":
+    elif cfg.MODEL == "resnet_mlperf":
         model = resnet.resnet_mlperf(
             input_shape=cfg.INPUT_SHAPE,
             num_classes=cfg.NUM_CLASSES,
@@ -249,12 +257,12 @@ if __name__ == "__main__":
     parser.add_argument("-lr", "--lr", type=float)
     parser.add_argument("-e", "--error_rate", type=float)
     parser.add_argument("-p", "--dataset_percentage", type=int)
+    parser.add_argument("--base_model", type=str)
     parser.add_argument("-wd", "--weight_decay", type=float)
-    parser.add_argument("-s", "--steps", type=int)
     
 
     args = parser.parse_args()
-    cfg = get_cfg(args.experiment_name, args.model, steps=args.steps)
+    cfg = get_cfg(args.experiment_name, args.model)
     if args.target_ds:
         cfg.TARGET_DS = args.target_ds
     if args.label_type:
@@ -274,4 +282,4 @@ if __name__ == "__main__":
     if args.weight_decay:
         cfg.WEIGHT_DECAY = args.weight_decay
 
-    train(cfg, extra_evals=[])
+    train(cfg, extra_evals=[], base_model=args.base_model)

@@ -4,13 +4,13 @@
 TRAINING_SCRIPT="train.py"
 
 # Define a list of learning rates to sweep over
-LEARNING_RATES=(0.0001 0.001 0.01 0.1)
-MODEL="resnet_mlperf"
+STEPS=(100000 500000 1000000)
+MODEL="resnet18"
 
 # Loop through each learning rate
-for lr in "${LEARNING_RATES[@]}"; do
+for steps in "${STEPS[@]}"; do
   # Run the training script with the current learning rate
-  python "$TRAINING_SCRIPT" -m="$MODEL" --lr="$lr" -n="$MODEL_lr_$lr"
+  python "$TRAINING_SCRIPT" -m="$MODEL" --lr="0.01" -wd="0.01" -s="$steps" -n="${MODEL}_lr_0.001_wd_0.004_s${steps}"
 done
 
 echo "Learning rate sweep completed!"

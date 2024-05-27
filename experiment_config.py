@@ -2,7 +2,7 @@ import time
 from ml_collections import config_dict
 
 
-def get_cfg(experiment_name=None, model=None):
+def get_cfg(experiment_name=None, model=None, steps=None):
     cfg = config_dict.ConfigDict()
 
     cfg.BUCKET_NAME = "gs://wake-vision-storage-2/"
@@ -108,7 +108,7 @@ def get_cfg(experiment_name=None, model=None):
     cfg.BATCH_SIZE = 512
     scale_factor = cfg.BATCH_SIZE // 128
     
-    cfg.STEPS = (10**5) // scale_factor 
+    cfg.STEPS = steps if steps else (10**5) // scale_factor 
     cfg.VAL_STEPS = cfg.STEPS // 20
 
     # Learning Rate Config
