@@ -162,6 +162,160 @@ def resnet_mlperf(input_shape, num_classes):
     return model
 
 
+def resnet_scaled(input_shape, num_classes, scale=2):
+    # Resnet parameters
+
+    num_filters = 16 * scale # this should be 64 for an official resnet model
+
+    # Input layer, change kernel size to 7x7 and strides to 2 for an official resnet
+    inputs = Input(shape=input_shape)
+    x = Conv2D(num_filters,
+                  kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(inputs)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+
+    # First stack
+
+    # Weight layers
+    y = Conv2D(num_filters,
+                  kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    y = BatchNormalization()(y)
+    y = Activation('relu')(y)
+    y = Conv2D(num_filters,
+                  kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(y)
+    y = BatchNormalization()(y)
+
+    # Overall residual, connect weight layer and identity paths
+    x = keras.layers.add([x, y])
+    x = Activation('relu')(x)
+
+
+    # Second stack
+
+    # Weight layers
+    num_filters = 32 * scale # Filters need to be double for each stack
+    y = Conv2D(num_filters,
+                  kernel_size=3,
+                  strides=2,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    y = BatchNormalization()(y)
+    y = Activation('relu')(y)
+    y = Conv2D(num_filters,
+                  kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(y)
+    y = BatchNormalization()(y)
+
+    # Adjust for change in dimension due to stride in identity
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=2,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+
+    # Overall residual, connect weight layer and identity paths
+    x = keras.layers.add([x, y])
+    x = Activation('relu')(x)
+
+
+    # Third stack
+
+    # Weight layers
+    num_filters = 64 * scale
+    y = Conv2D(num_filters,
+                  kernel_size=3,
+                  strides=2,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+    y = BatchNormalization()(y)
+    y = Activation('relu')(y)
+    y = Conv2D(num_filters,
+                  kernel_size=3,
+                  strides=1,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(y)
+    y = BatchNormalization()(y)
+
+    # Adjust for change in dimension due to stride in identity
+    x = Conv2D(num_filters,
+                  kernel_size=1,
+                  strides=2,
+                  padding='same',
+                  kernel_initializer='he_normal',
+                  kernel_regularizer=l2(1e-4))(x)
+
+    # Overall residual, connect weight layer and identity paths
+    x = keras.layers.add([x, y])
+    x = Activation('relu')(x)
+
+
+    # Fourth stack.
+
+    # Weight layers
+    num_filters = 128 * scale
+    y = Conv2D(num_filters,
+                    kernel_size=3,
+                    strides=2,
+                    padding='same',
+                    kernel_initializer='he_normal',
+                    kernel_regularizer=l2(1e-4))(x)
+    y = BatchNormalization()(y)
+    y = Activation('relu')(y)
+    y = Conv2D(num_filters,
+                    kernel_size=3,
+                    strides=1,
+                    padding='same',
+                    kernel_initializer='he_normal',
+                    kernel_regularizer=l2(1e-4))(y)
+    y = BatchNormalization()(y)
+
+    # Adjust for change in dimension due to stride in identity
+    x = Conv2D(num_filters,
+                    kernel_size=1,
+                    strides=2,
+                    padding='same',
+                    kernel_initializer='he_normal',
+                    kernel_regularizer=l2(1e-4))(x)
+
+    # Overall residual, connect weight layer and identity paths
+    x = keras.layers.add([x, y])
+    x = Activation('relu')(x)
+
+
+    # Final classification layer.
+    pool_size = int(np.amin(x.shape[1:3]))
+    x = AveragePooling2D(pool_size=pool_size)(x)
+    y = Flatten()(x)
+    outputs = Dense(num_classes,
+                    activation='softmax',
+                    kernel_initializer='he_normal')(y)
+
+    # Instantiate model.
+    model = Model(inputs=inputs, outputs=outputs)
+    return model
+
+
 def handle_block_names(stage, block):
     name_base = 'stage{}_unit{}_'.format(stage + 1, block + 1)
     conv_name = name_base + 'conv'
@@ -281,6 +435,9 @@ def resnet_builder(input_shape, num_classes, layers=[2,2,2,2]):
     
     model = Model(inputs=inputs, outputs=x)
     return model
+
+def resnet8(input_shape, num_classes):
+    return resnet_builder(input_shape, num_classes, layers=[1,1,1,1])
 
 def resnet18(input_shape, num_classes):
     return resnet_builder(input_shape, num_classes, layers=[2,2,2,2])
