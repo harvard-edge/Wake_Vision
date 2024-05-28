@@ -43,11 +43,11 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
         if cfg.TRAIN_PERCENTAGE:
             train_split = f"{train_split}[0:{cfg.TRAIN_PERCENTAGE}%]"
         
-        train, val, test = tfds.load(
+        train = tfds.load(
         "wake_vision",
         data_dir=cfg.WV_DIR,
         shuffle_files=False,
-        split=[train_split, "validation", "test"],
+        split=train_split,
         )
             
         if cfg.ERROR_RATE:
@@ -58,10 +58,11 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
             
         from wake_vision_loader import preprocessing
         train = preprocessing(train, cfg.BATCH_SIZE, train=True, cfg=cfg)
-        val = val.filter(lambda x: x['person'] >= 0) #Filter out far set images
-        val = preprocessing(val, cfg.BATCH_SIZE, train=False, cfg=cfg)
-        test = test.filter(lambda x: x['person'] >= 0) #Filter out far set images
-        test = preprocessing(test, cfg.BATCH_SIZE, train=False, cfg=cfg)
+        # val = val.filter(lambda x: x['person'] >= 0) #Filter out far set images
+        # val = preprocessing(val, cfg.BATCH_SIZE, train=False, cfg=cfg)
+        # test = test.filter(lambda x: x['person'] >= 0) #Filter out far set images
+        # test = preprocessing(test, cfg.BATCH_SIZE, train=False, cfg=cfg)
+        _, val, test = get_wake_vision(cfg)
         
     else:
         raise ValueError('Invalid target dataset. Must be either "vww" or "wv".')
