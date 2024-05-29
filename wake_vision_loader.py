@@ -62,7 +62,7 @@ def open_images_to_wv(
             'Encountered a split that was neither "train", "validation" or "test"'
         )
 
-    # Correct labels found to be wrong using cleanlab. Currently we only have verified labels for the "validation" and "test" split.
+    # Correct labels according to new labels from scale.ai run.
     if split_name != "train":
         try:
             (
@@ -70,7 +70,7 @@ def open_images_to_wv(
                 verified_non_person_list,
                 verified_exclude_list,
                 verified_depiction_list,
-            ) = read_cleanlab_csv(f"cleaned_csvs/wv_{split_name}_cleaned.csv")
+            ) = read_clean_csv(f"cleaned_csvs/wv_{split_name}_cleaned.csv")
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"Could not find the file wv_{split_name}_cleaned.csv in the cleaned_csvs directory. Please download this file from the github repository, or generate it yourself using the scripts in the cleanlab_cleaning directory"
@@ -180,7 +180,7 @@ def label_person_bbox_labels(ds_entry, person_label_list, cfg=default_cfg):
     return ds_entry
 
 
-def read_cleanlab_csv(file_path):
+def read_clean_csv(file_path):
     # Initialize lists for each category
     verified_person_list = []
     verified_non_person_list = []
@@ -229,6 +229,7 @@ def correct_label_issues(
         )
     ):
         ds_entry["person"] = 1
+        ds_entry["bobjects"]["is_depiction"] = tf.constant(0, dtype=tf.int8)
     elif tf.reduce_any(
         tf.equal(
             ds_entry["image/filename"],
@@ -253,6 +254,7 @@ def correct_label_issues(
             ds_entry["person"] = -1
         else:
             ds_entry["person"] = 0
+        ds_entry["bobjects"]["is_depiction"] = tf.constant(1, dtype=tf.int8)
     return ds_entry
 
 
