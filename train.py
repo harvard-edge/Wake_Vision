@@ -72,6 +72,12 @@ def train(cfg=default_cfg, extra_evals=["distance_eval", "miap_eval", "lighting_
             input_shape=cfg.INPUT_SHAPE,
             num_classes=cfg.NUM_CLASSES,
         )
+    elif cfg.MODEL == "resnet_small":
+        model = resnet.resnet_scaled(
+            input_shape=cfg.INPUT_SHAPE,
+            num_classes=cfg.NUM_CLASSES,
+            scale=1,
+        )
     elif cfg.MODEL == "resnet_scaled":
         model = resnet.resnet_scaled(
             input_shape=cfg.INPUT_SHAPE,
