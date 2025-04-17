@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 import os
 
-model_name = 'wv_k_8_c_5'
+model_name = 'wv_quality_k_8_c_5'
 
 input_shape = (50,50,3)
 color_mode = 'rgb'
@@ -17,6 +17,8 @@ learning_rate = 0.001
 
 path_to_training_set = '../../datasets/wake_vision/wake_vision/train_quality'
 path_to_validation_set = '../../datasets/wake_vision/wake_vision/validation'
+path_to_training_set = '/media/sealab-xps/hdd_2TB/datasets/wake_vision/wake_vision/train_quality'
+path_to_validation_set = '/media/sealab-xps/hdd_2TB/datasets/wake_vision/wake_vision/validation'
 
 inputs = keras.Input(shape=input_shape)
 #
@@ -117,9 +119,6 @@ converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
 converter.inference_input_type = tf.uint8  # or tf.int8
 converter.inference_output_type = tf.uint8  # or tf.int8
 tflite_quant_model = converter.convert()
-
-with open(model_name + ".tflite", 'wb') as f:
-    f.write(tflite_quant_model)
 
 with open(model_name + ".tflite", 'wb') as f:
     f.write(tflite_quant_model)

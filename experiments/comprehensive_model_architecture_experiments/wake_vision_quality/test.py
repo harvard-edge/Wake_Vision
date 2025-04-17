@@ -1,15 +1,15 @@
 import tensorflow as tf
 
-path_to_test_set = '../../datasets/visual_wake_words/mini_val'
-#path_to_test_set = '../../datasets/wake_vision/wake_vision/test'
+#path_to_test_set = '../../datasets/visual_wake_words/mini_val'
+path_to_test_set = '../../datasets/wake_vision/wake_vision/test'
 
-image_size = (224,224)
-color_mode = 'rgb'
-path_to_tflite_model = 'wv_quality_mobilenetv2.tflite'
+#image_size = (224,224)
+#color_mode = 'rgb'
+#path_to_tflite_model = 'wv_quality_mobilenetv2.tflite'
 
-#image_size = (50,50)
-#color_mode = 'grayscale'
-#path_to_tflite_model = 'wv_quality_micronets_vww2_50_50_INT8.tflite'
+image_size = (50,50)
+color_mode = 'grayscale'
+path_to_tflite_model = '0_wv_quality_micronets_vww2_50_50_INT8.tflite'
 
 #image_size = (128, 128)
 #color_mode = 'grayscale'
@@ -30,9 +30,37 @@ path_to_tflite_model = 'wv_quality_mobilenetv2.tflite'
 
 #image_size = (50,50)
 #color_mode = 'rgb'
-#path_to_tflite_model = 'wv_k_2_c_3.tflite'
-#path_to_tflite_model = 'wv_k_4_c_5.tflite'
-#path_to_tflite_model = 'wv_k_8_c_5.tflite'
+#path_to_tflite_model = 'wv_quality_k_2_c_3.tflite'
+#path_to_tflite_model = 'wv_quality_k_4_c_5.tflite'
+#path_to_tflite_model = 'wv_quality_k_8_c_5.tflite'
+
+#image_size = (50,50)
+#color_mode = 'rgb'
+#path_to_tflite_model = 'wv_quality_ymac.tflite'
+
+#image_size = (80,80)
+#color_mode = 'rgb'
+#path_to_tflite_model = 'wv_quality_samy.tflite'
+
+#image_size = (50,50)
+#color_mode = 'rgb'
+#path_to_tflite_model = '0_wv_quality_anas_benalla.tflite'
+
+#image_size = (80,80)
+#color_mode = 'rgb'
+#path_to_tflite_model = 'wv_quality_mohammad_hallaq.tflite'
+
+#image_size = (50,50)
+#color_mode = 'rgb'
+#path_to_tflite_model = 'wv_quality_apighetti.tflite'
+
+#image_size = (48,48)
+#color_mode = 'rgb'
+#path_to_tflite_model = 'wv_quality_benx13.tflite'
+
+#image_size = (50,50)
+#color_mode = 'rgb'
+#path_to_tflite_model = 'wv_quality_cezar.tflite'
 
 test_ds = tf.keras.utils.image_dataset_from_directory(
     directory= path_to_test_set,
@@ -62,8 +90,17 @@ for image, label in test_ds :
        input_data = tf.dtypes.cast(image, tf.uint8)
        interpreter.set_tensor(input['index'], input_data)
        interpreter.invoke()
-       if label.numpy().argmax() == interpreter.get_tensor(output['index']).argmax() :
-           correct = correct + 1
-       else :
-           wrong = wrong + 1
+       pred = interpreter.get_tensor(output['index'])
+       if 1 < pred.shape[1] :
+           if label.numpy().argmax() == pred.argmax() :
+               correct = correct + 1
+           else :
+               wrong = wrong + 1
+       elif 1 == pred.shape[1] :
+           pred = 1 if (pred / 255. >= .5) else 0
+           if label.numpy().argmax() == pred:
+               correct = correct + 1
+           else:
+               wrong = wrong + 1
+
 print(f"\n\nTflite model test accuracy: {correct/(correct+wrong)}\n\n")

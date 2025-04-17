@@ -62,10 +62,18 @@ for i in range(3) :
             input_data = tf.dtypes.cast(image, tf.uint8)
             interpreter.set_tensor(input['index'], input_data)
             interpreter.invoke()
-            if label.numpy().argmax() == interpreter.get_tensor(output['index']).argmax() :
-                correct = correct + 1
-            else :
-                wrong = wrong + 1
+            pred = interpreter.get_tensor(output['index'])
+            if 1 < pred.shape[1] :
+                if label.numpy().argmax() == pred.argmax() :
+                    correct = correct + 1
+                else :
+                    wrong = wrong + 1
+            elif 1 == pred.shape[1] :
+                pred = 1 if (pred / 255. >= .5) else 0
+                if label.numpy().argmax() == pred:
+                    correct = correct + 1
+                else:
+                    wrong = wrong + 1
     test_accs.append((correct / (correct + wrong)) * 100)
 
 mean = round(statistics.mean(test_accs), 1)

@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 import os
 
-model_name = 'wv_k_4_c_5'
+model_name = 'wv_quality_k_4_c_5'
 
 input_shape = (50,50,3)
 color_mode = 'rgb'
@@ -56,8 +56,6 @@ x = keras.layers.BatchNormalization()(x)
 x = keras.layers.ReLU()(x)
 #
 outputs = keras.layers.Dense(2, activation='softmax')(x)
-
-model = keras.Model(inputs, outputs)
 
 model = keras.Model(inputs, outputs)
 
@@ -119,9 +117,6 @@ converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
 converter.inference_input_type = tf.uint8  # or tf.int8
 converter.inference_output_type = tf.uint8  # or tf.int8
 tflite_quant_model = converter.convert()
-
-with open(model_name + ".tflite", 'wb') as f:
-    f.write(tflite_quant_model)
 
 with open(model_name + ".tflite", 'wb') as f:
     f.write(tflite_quant_model)

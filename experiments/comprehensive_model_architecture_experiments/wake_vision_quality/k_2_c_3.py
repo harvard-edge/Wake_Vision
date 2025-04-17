@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 import os
 
-model_name = 'wv_k_2_c_3'
+model_name = 'wv_quality_k_2_c_3'
 
 input_shape = (50,50,3)
 color_mode = 'rgb'
@@ -46,8 +46,6 @@ x = keras.layers.BatchNormalization()(x)
 x = keras.layers.ReLU()(x)
 #
 outputs = keras.layers.Dense(2, activation='softmax')(x)
-
-model = keras.Model(inputs, outputs)
 
 model = keras.Model(inputs, outputs)
 
