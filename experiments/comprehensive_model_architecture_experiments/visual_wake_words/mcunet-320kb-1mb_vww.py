@@ -302,7 +302,7 @@ model = keras.Model(inputs, outputs)
 opt = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
 model.compile(optimizer=opt,
-    loss='categorical_crossentropy',
+    loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
     metrics=['accuracy'])
 
 #load dataset
