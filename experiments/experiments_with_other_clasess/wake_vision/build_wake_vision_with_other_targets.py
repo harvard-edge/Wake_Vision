@@ -4,7 +4,7 @@ import subprocess
 import argparse
 import csv
 
-parser = argparse.ArgumentParser(description="Wake Vision binary dataset builder")
+parser = argparse.ArgumentParser(description="Wake Vision binary classification dataset builder. It builds a binary classification dataset for the target class. It does not apply Wake Vision pre-processing for standardized evaluation. See appendix J of Wake Vision paper for further information: https://arxiv.org/pdf/2405.00892")
 
 parser.add_argument("target", type=str,
     help="Target class (e.g. Bird).\n For available classes see: https://storage.googleapis.com/openimages/v7/oidv7-class-descriptions-boxable.csv")
@@ -89,10 +89,10 @@ for split, annotations_filename in zip(splits, annotations_files) :
         reader = csv.DictReader(csvfile)
         for row in reader :
             if row['LabelName'] == label_name :
-                if row['IsTruncated'] == '0' and row['IsDepiction'] == '0' :
-                    area = (float(row['XMax']) - float(row['XMin'])) * (float(row['YMax']) - float(row['YMin']))
-                    if area > 0.05 :
-                        target_images.add(row['ImageID']) 
+                if row['IsDepiction'] == '0' :
+                    target_images.add(row['ImageID'])
+                else :
+                    background_images.add(row['ImageID'])
             else :
                 background_images.add(row['ImageID'])
                 
@@ -121,6 +121,7 @@ for split, annotations_filename in zip(splits, annotations_files) :
     target_images = target_images[:n_targets]
     background_images = background_images[:n_backgrounds]
     
+    #prepare for download
     path_to_target_images_list = Path('target_images.txt')
     path_to_background_images_list = Path('background_images.txt')
     
@@ -138,16 +139,17 @@ for split, annotations_filename in zip(splits, annotations_files) :
     path_to_target_images.mkdir(parents=True, exist_ok=True)
     path_to_target_images.mkdir(parents=True, exist_ok=True)
 
+    #download
     subprocess.run(["python3", downloader_filename, str(path_to_target_images_list), f"--download_folder={str(path_to_target_images)}", f"--num_processes={num_processes}"])
     subprocess.run(["python3", downloader_filename, str(path_to_background_images_list), f"--download_folder={str(path_to_background_images)}", f"--num_processes={num_processes}"])
 
     path_to_target_images_list.unlink()
     path_to_background_images_list.unlink()
-    
+
+    #save for preparing train large split    
     if split == 'train' :
         train_quality_images = set(target_images) | set(background_images)
-        
-(path_to_dataset / 'train').rename(Path(path_to_dataset / 'train_quality'))
+        (path_to_dataset / 'train').rename(Path(path_to_dataset / 'train_quality'))
 
 #train large split
 print(f"Preparing train_large split...")
