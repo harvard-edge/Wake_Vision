@@ -233,4 +233,6 @@ path_to_background_images_list.unlink()
 
 (path_to_dataset / 'train').rename(Path(path_to_dataset / 'train_large'))
 
+subprocess.run(["chmod", "777", "-R", dataset_name])
+
 print(f"Dataset saved in {path_to_dataset.resolve()}")
