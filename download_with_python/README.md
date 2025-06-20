@@ -18,7 +18,7 @@ First, install Docker on your machine:
 3. **Substitute "your-api-token-goes-here" with your API token in the following command** and run it inside the directory where you cloned this repository to download and build the Wake Vision Dataset:
 
 ```bash
-sudo docker run -it --rm -v "$(pwd):/tmp" -w /tmp wake_vision:download python download_and_build_wake_vision_dataset.py your-api-token-goes-here
+sudo docker run -it --rm -v "$(pwd):/tmp" -w /tmp andregara/wake_vision:download python download_and_build_wake_vision_dataset.py your-api-token-goes-here
 ```
 
 💡 **Note**: Make sure to have at least 600 GB of free disk space.
