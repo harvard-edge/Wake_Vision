@@ -18,6 +18,6 @@ Substitute **Gondola** with your target class (e.g. Dog, Cat, Bird...). The comp
 sudo docker run -it --rm -v "$(pwd):/tmp" -w /tmp wake_vision:download python build_wake_vision_with_other_targets.py Gondola
 ```
 
-Note: It does not apply Wake Vision pre-processing for standardized evaluation. See appendix J of Wake Vision paper for further information: https://arxiv.org/pdf/2405.00892
+**Note**: It does not apply Wake Vision pre-processing for standardized evaluation. See appendix J of Wake Vision paper for further information: https://arxiv.org/pdf/2405.00892
 
 ---
