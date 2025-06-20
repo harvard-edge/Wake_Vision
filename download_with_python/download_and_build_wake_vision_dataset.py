@@ -22,8 +22,10 @@ os.system("mv dataverse_files/* .")
 #delete void folder
 os.system("rmdir dataverse_files")
 
+dataset_name = 'wake_vision'
+
 #build dataset
-path_to_dataset = Path('wake_vision')
+path_to_dataset = Path(dataset_name)
 
 folders_and_file_names = list()
 
@@ -143,5 +145,7 @@ for zipped_file in Path('.').glob('*.tar.gz') :
 
 for csv_file in Path('.').glob('*.csv') :
     csv_file.unlink()
+
+os.system(f"chmod 777 -R {dataset_name}")
 
 print(f"Dataset saved in folder: {path_to_dataset}")
