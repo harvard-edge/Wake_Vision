@@ -20,16 +20,19 @@ annotations_filename = 'annotations_trainval2014.zip'
 
 if not Path(annotations_filename).exists() :
     urlretrieve('http://images.cocodataset.org/annotations/annotations_trainval2014.zip', filename=annotations_filename)
+    os.system(f"chmod 777 -R {annotations_filename}")
 
 train_filename = 'train2014.zip'
 
 if not Path(train_filename).exists() :
     urlretrieve('http://images.cocodataset.org/zips/train2014.zip', filename=train_filename)
+    os.system(f"chmod 777 -R {train_filename}")
     
 val_filename = 'val2014.zip'
 
-if not Path(train_filename).exists() :
+if not Path(val_filename).exists() :
     urlretrieve('http://images.cocodataset.org/zips/val2014.zip', filename=val_filename)
+    os.system(f"chmod 777 -R {val_filename}")
 
 os.system('unzip annotations_trainval2014 -d data')
 #os.system('rm annotations_trainval2014.zip')
@@ -177,4 +180,7 @@ print(f"Number of target images: {len(list((Path(target_class) / '1').glob('*.jp
 print(f"Number of background images: {len(list((Path(target_class) / '0').glob('*.jpg')))}")
 
 path = os.path.abspath(f"./{target_class}/")
+
+os.system(f"chmod 777 -R {path}")
+
 print(f"\nDataset saved in: {path}\n")
