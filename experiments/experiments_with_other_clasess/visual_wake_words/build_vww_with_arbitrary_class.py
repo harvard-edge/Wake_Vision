@@ -3,6 +3,7 @@ from pycocotools.coco import COCO
 from pathlib import Path
 import subprocess
 import argparse
+import math
 import os
 
 parser = argparse.ArgumentParser(description="Visual Wake Words binary dataset builder")
@@ -13,6 +14,8 @@ parser.add_argument("target", type=str,
 args = parser.parse_args()
 
 target_class = args.target
+
+test_split = 0.2
 
 print("\nPlease be patient, it will take some time...\n")
 
@@ -163,14 +166,14 @@ print(f"Number of images to remove: {images_to_remove_count}")
 
 if delta > 0 :
     #remove images from target class
-    for image in (Path(target_class) / '1').glob('*.jpg') :
+    for image in sorted((Path(target_class) / '1').glob('*.jpg')) :
         image.unlink()
         images_to_remove_count = images_to_remove_count - 1
         if images_to_remove_count <= 0 :
             break
 elif delta < 0 :
     #remove images from background class
-    for image in (Path(target_class) / '0').glob('*.jpg') :
+    for image in sorted((Path(target_class) / '0').glob('*.jpg')) :
         image.unlink()
         images_to_remove_count = images_to_remove_count - 1
         if images_to_remove_count <= 0 :
@@ -178,6 +181,28 @@ elif delta < 0 :
 
 print(f"Number of target images: {len(list((Path(target_class) / '1').glob('*.jpg')))}")
 print(f"Number of background images: {len(list((Path(target_class) / '0').glob('*.jpg')))}")
+
+os.system(f"mkdir -p {target_class}/test/1")
+
+images = sorted((Path(target_class) / '1').glob('*.jpg'))
+test_images = images[:int(math.floor(test_split*len(images)))]
+
+for image in test_images :
+    image.rename(Path(target_class) / 'test' / '1' / image.stem)
+    
+os.system(f"mkdir -p {target_class}/training")
+os.system(f"mv {target_class}/1 {target_class}/training")
+    
+os.system(f"mkdir -p {target_class}/test/0")
+
+images = sorted((Path(target_class) / '0').glob('*.jpg'))
+test_images = images[:int(math.floor(test_split*len(images)))]
+
+for image in test_images :
+    image.rename(Path(target_class) / 'test' / '0' / image.stem)
+    
+os.system(f"mkdir -p {target_class}/training")
+os.system(f"mv {target_class}/0 {target_class}/training")
 
 path = os.path.abspath(f"./{target_class}/")
 
