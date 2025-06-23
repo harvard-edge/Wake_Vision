@@ -182,6 +182,7 @@ elif delta < 0 :
 print(f"Number of target images: {len(list((Path(target_class) / '1').glob('*.jpg')))}")
 print(f"Number of background images: {len(list((Path(target_class) / '0').glob('*.jpg')))}")
 
+#test split
 os.system(f"mkdir -p {target_class}/test/1")
 
 images = sorted((Path(target_class) / '1').glob('*.jpg'))
