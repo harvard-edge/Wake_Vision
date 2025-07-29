@@ -189,7 +189,7 @@ images = sorted((Path(target_class) / '1').glob('*.jpg'))
 test_images = images[:int(math.floor(test_split*len(images)))]
 
 for image in test_images :
-    image.rename(Path(target_class) / 'test' / '1' / image.stem)
+    image.rename(Path(target_class) / 'test' / '1' / image.name)
     
 os.system(f"mkdir -p {target_class}/training")
 os.system(f"mv {target_class}/1 {target_class}/training")
@@ -200,7 +200,7 @@ images = sorted((Path(target_class) / '0').glob('*.jpg'))
 test_images = images[:int(math.floor(test_split*len(images)))]
 
 for image in test_images :
-    image.rename(Path(target_class) / 'test' / '0' / image.stem)
+    image.rename(Path(target_class) / 'test' / '0' / image.name)
     
 os.system(f"mkdir -p {target_class}/training")
 os.system(f"mv {target_class}/0 {target_class}/training")
